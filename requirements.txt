@@ -1,0 +1,5 @@
+# requirements.txt
+freqtrade>=2024.2
+freqtrade[freqai]>=2024.2
+pytest>=8.0.0
+catboost>=1.2.0
