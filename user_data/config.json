@@ -13,7 +13,7 @@
         "secret": "",
         "ccxt_config": {},
         "ccxt_async_config": {},
-        "pair_whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+        "pair_whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT"],
         "pair_blacklist": []
     },
     "trading_mode": "futures",
@@ -52,14 +52,14 @@
     "freqai": {
         "enabled": true,
         "purge_old_models": 2,
-        "train_period_days": 15,
+        "train_period_days": 30,
         "backtest_period_days": 7,
-        "identifier": "catboost_model_v1",
+        "identifier": "stat_arb_final",
         "model_name": "CatboostRegressor",
         "model_training_parameters": {
-            "iterations": 100,
-            "depth": 5,
-            "learning_rate": 0.1
+            "iterations": 500,
+            "depth": 6,
+            "learning_rate": 0.05
         },
         "feature_parameters": {
             "include_timeframes": ["5m", "15m", "1h"],
