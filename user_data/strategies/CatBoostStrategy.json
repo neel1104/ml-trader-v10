@@ -20,9 +20,9 @@
       "buy_threshold": 0.005
     },
     "sell": {
-      "sell_threshold": -0.01
+      "sell_threshold": -0.005
     }
   },
   "ft_stratparam_v": 1,
-  "export_time": "2026-04-26 08:59:37.997396+00:00"
+  "export_time": "2026-04-26 11:16:09.052197+00:00"
 }

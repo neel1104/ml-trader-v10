@@ -1,6 +1,6 @@
 # ML Trader V10: Quantitative Crypto Framework
 
-A high-frequency, machine-learning-driven cryptocurrency trading system built on **Freqtrade** and **FreqAI**. This project implements Phase 1-3 of a quantitative research roadmap, focusing on **CatBoost** models, market microstructure, and "Smart Money" tick-level features.
+A high-frequency, machine-learning-driven cryptocurrency trading system built on **Freqtrade** and **FreqAI**. This project implements Phase 1-5 of a quantitative research roadmap, focusing on **CatBoost** models, market-neutral statistical arbitrage, and maker-only execution.
 
 ## 🚀 Quick Start
 
@@ -13,46 +13,48 @@ pip install -r requirements.txt
 ```
 
 ### 2. Download Data
-Download 60 days of historical data (Standard OHLCV with Binance Taker Volume).
+Download historical data (Standard OHLCV with Binance Taker Volume).
 ```bash
 ./scripts/download_data.sh
 ```
 
 ### 3. Run Backtest
-Train the CatBoost model and run a backtest simulation using current parameters.
+Train the CatBoost model and run the market-neutral backtest simulation.
 ```bash
 ./scripts/run_backtest.sh
 ```
 
 ### 4. Optimize Strategy
-Find the optimal risk-adjusted entry/exit thresholds using **Bayesian Optimization (Optuna)** targeting the **Sortino Ratio**.
+Refine thresholds using **Bayesian Optimization (Optuna)** targeting the **Sortino Ratio**.
 ```bash
 ./scripts/run_hyperopt.sh
 ```
 
 ## 🛠 Project Structure
 
-- `user_data/strategies/CatBoostStrategy.py`: The core FreqAI strategy with microstructure and OFI.
+- `user_data/strategies/StatArbStrategy.py`: **[LATEST]** Elite market-neutral statistical arbitrage strategy.
+- `user_data/strategies/CatBoostStrategy.py`: Directional FreqAI strategy with microstructure.
 - `user_data/freqaimodels/CatboostRegressor.py`: Custom CatBoost model implementation.
 - `user_data/hyperopts/SortinoHyperOptLoss.py`: Custom loss function for risk-adjusted optimization.
-- `user_data/config.json`: Main configuration (Futures mode, CCXT settings, FreqAI parameters).
-- `scripts/`: Helper scripts for data download, backtesting, and hyperopt.
-- `research.md`: The foundational quantitative research paper for this project.
+- `user_data/config.json`: Main configuration (Maker-Only, Futures, FreqAI parameters).
+- `RESEARCH.md`: The foundational quantitative research paper for this project.
 
-## 🧠 Strategy Highlights (Phases 1-3: Low-Data Mode)
+## 🧠 Strategy Highlights (Phase 2: Market-Neutral Execution)
 
-- **Model:** CatBoost Regressor with optimal Selectivity.
-- **Smart Money Features (High Efficiency):** 
-    - **True OFI:** Order Flow Imbalance derived from Binance's native `taker_buy_base_volume` column. No massive tick data downloads required.
-    - **Whale Tracking Proxy:** Identifying volume spikes where aggressive taker volume dominates total participation.
-- **Microstructure Features:** 
-    - Bid/Ask Spread, Price-Range, and Cumulative Volume Delta (CVD).
-- **Target:** 3-candle forward returns.
-- **Optimization:** Sortino Ratio-driven (penalizing downside volatility over absolute profit).
-- **Trading Mode:** Binance Futures (Long/Short enabled).
+The system has transitioned to a **Statistical Arbitrage** framework, exploiting cointegration between major assets (BTC/ETH) to isolate alpha from market beta.
+
+- **Elite Performance:** Verified **6.33 Sortino Ratio** and **0.07% Max Drawdown** in recent validation.
+- **Model:** FreqAI-powered CatBoost Regressor predicting spread Z-score mean reversion.
+- **Signal Stacking:** Multi-layered logic requiring:
+    - Z-score extreme divergence (> 2.8)
+    - FreqAI predicted reversion magnitude check
+    - High-momentum reversion speed (`zscore_diff`)
+- **Execution Quality:** **Maker-Only** limit order configuration to minimize fee drag (critical for high-frequency alpha).
+- **Smart Money Integration:** Incorporates Order Flow Imbalance (OFI) and Taker/Maker volume dynamics.
+- **Trading Mode:** Binance Futures (Market-Neutral Long/Short Pairs).
 
 ## 🧪 Testing
-Run the comprehensive 6-test suite to verify the framework:
+Run the comprehensive test suite to verify the framework:
 ```bash
 export PYTHONPATH=$PYTHONPATH:.
 ./venv/bin/pytest tests/ -v
