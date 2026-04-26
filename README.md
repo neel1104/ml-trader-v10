@@ -12,8 +12,8 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Download Data (Including Tick/Trades)
-Download 60 days of historical data, including raw transaction data for Smart Money features.
+### 2. Download Data
+Download 60 days of historical data (Standard OHLCV with Binance Taker Volume).
 ```bash
 ./scripts/download_data.sh
 ```
@@ -39,14 +39,14 @@ Find the optimal risk-adjusted entry/exit thresholds using **Bayesian Optimizati
 - `scripts/`: Helper scripts for data download, backtesting, and hyperopt.
 - `research.md`: The foundational quantitative research paper for this project.
 
-## 🧠 Strategy Highlights (Phases 1-3)
+## 🧠 Strategy Highlights (Phases 1-3: Low-Data Mode)
 
 - **Model:** CatBoost Regressor with optimal Selectivity.
-- **Smart Money Features:** 
-    - **True OFI:** Trade Flow Imbalance calculated from raw tick data.
-    - **Whale Tracking:** Isolating large institutional trade volumes (top 5th percentile).
+- **Smart Money Features (High Efficiency):** 
+    - **True OFI:** Order Flow Imbalance derived from Binance's native `taker_buy_base_volume` column. No massive tick data downloads required.
+    - **Whale Tracking Proxy:** Identifying volume spikes where aggressive taker volume dominates total participation.
 - **Microstructure Features:** 
-    - Bid/Ask Spread, Price-Range, and Mock-CVD.
+    - Bid/Ask Spread, Price-Range, and Cumulative Volume Delta (CVD).
 - **Target:** 3-candle forward returns.
 - **Optimization:** Sortino Ratio-driven (penalizing downside volatility over absolute profit).
 - **Trading Mode:** Binance Futures (Long/Short enabled).
