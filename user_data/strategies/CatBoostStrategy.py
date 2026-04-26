@@ -55,7 +55,7 @@ class CatBoostStrategy(IStrategy):
     def populate_entry_trend(self, dataframe: pd.DataFrame, metadata: dict) -> pd.DataFrame:
         enter_long_conditions = [
             dataframe["do_predict"] == 1,
-            dataframe["&-s_close"] > 0.01  # Predicted to go up > 1%
+            dataframe["&-s_close"] > 0.001  # Predicted to go up > 0.1%
         ]
         dataframe.loc[
             reduce(lambda x, y: x & y, enter_long_conditions), ["enter_long", "enter_tag"]
@@ -63,7 +63,7 @@ class CatBoostStrategy(IStrategy):
 
         enter_short_conditions = [
             dataframe["do_predict"] == 1,
-            dataframe["&-s_close"] < -0.01 # Predicted to go down > 1%
+            dataframe["&-s_close"] < -0.001 # Predicted to go down > 0.1%
         ]
         dataframe.loc[
             reduce(lambda x, y: x & y, enter_short_conditions), ["enter_short", "enter_tag"]
