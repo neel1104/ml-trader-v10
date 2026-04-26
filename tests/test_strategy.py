@@ -63,28 +63,25 @@ def test_smart_money_features():
     import pandas as pd
     import numpy as np
     
-    # Mock OHLCV
+    # Mock OHLCV with Binance taker volume columns
     df = pd.DataFrame({
         "date": pd.to_datetime(["2026-04-26 12:00", "2026-04-26 12:05"]),
-        "open": [99, 100],
-        "close": [100, 101], 
+        "open": [100, 100],
+        "close": [101, 99], 
         "high": [102, 103], 
-        "low": [99, 100], 
-        "volume": [10, 15]
+        "low": [99, 98], 
+        "volume": [100, 100],
+        "taker_buy_base_volume": [65, 30] # 65% buy in candle 1, 30% buy in candle 2
     })
-    
-    # Mock DataProvider trades method
-    class MockDP:
-        def trades(self, pair, timeframe=None):
-            return pd.DataFrame({
-                'date': pd.to_datetime(["2026-04-26 12:01", "2026-04-26 12:02", "2026-04-26 12:06"]),
-                'amount': [1.5, 15.0, 2.0],
-                'side': ['buy', 'sell', 'buy']
-            })
-            
-    strategy.dp = MockDP()
     
     result = strategy.feature_engineering_expand_all(df, period=14, metadata={'pair': 'BTC/USDT:USDT'})
     
     assert "%-true_ofi" in result.columns
     assert "%-whale_volume" in result.columns
+    # Check OFI calculation: (2 * 65) - 100 = 30
+    assert result.iloc[0]["%-true_ofi"] == 30
+    # Check OFI calculation: (2 * 30) - 100 = -40
+    assert result.iloc[1]["%-true_ofi"] == -40
+    # Check Whale Proxy (65% > 60% and 30% < 40% should trigger)
+    assert result.iloc[0]["%-whale_volume"] == 100
+    assert result.iloc[1]["%-whale_volume"] == 100

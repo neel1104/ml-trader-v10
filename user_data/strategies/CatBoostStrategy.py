@@ -1,5 +1,6 @@
 # user_data/strategies/CatBoostStrategy.py
 import pandas as pd
+import numpy as np
 from functools import reduce
 from freqtrade.strategy import IStrategy, DecimalParameter
 import talib.abstract as ta
@@ -27,35 +28,23 @@ class CatBoostStrategy(IStrategy):
         dataframe[f"%-mfi-{period}"] = ta.MFI(dataframe, timeperiod=period)
         dataframe[f"%-adx-{period}"] = ta.ADX(dataframe, timeperiod=period)
 
-        # Phase 3: Smart Money Features (Tick-level)
-        metadata = kwargs.get('metadata', {})
-        if self.dp and metadata:
-            pair = metadata.get('pair')
-            trades = self.dp.trades(pair)
-            if trades is not None and not trades.empty:
-                trades_df = trades.set_index('date')
-
-                # Calculate True OFI (Buy Volume - Sell Volume)
-                buy_vol = trades_df[trades_df['side'] == 'buy']['amount'].resample(self.timeframe).sum()
-                sell_vol = trades_df[trades_df['side'] == 'sell']['amount'].resample(self.timeframe).sum()
-                ofi = buy_vol.sub(sell_vol, fill_value=0)
-
-                # Calculate Whale Proxy (Volume of top 5% of trades)
-                whale_thresh = trades_df['amount'].quantile(0.95) if not trades_df.empty else 0
-                whale_vol = trades_df[trades_df['amount'] > whale_thresh]['amount'].resample(self.timeframe).sum()
-
-                # Create a temporary dataframe to align indices
-                temp_df = pd.DataFrame({'%-true_ofi': ofi, '%-whale_volume': whale_vol})
-
-                # Set dataframe index to merge
-                dataframe = dataframe.set_index('date')
-                # Join and fill missing with 0
-                dataframe = dataframe.join(temp_df).fillna({'%-true_ofi': 0, '%-whale_volume': 0})
-                dataframe = dataframe.reset_index()
-            else:
-                dataframe['%-true_ofi'] = 0
-                dataframe['%-whale_volume'] = 0
+        # Phase 3: Smart Money Features (Low-Data / Native OHLCV Mode)
+        # Binance provides 'taker_buy_base_volume' in standard OHLCV
+        if 'taker_buy_base_volume' in dataframe.columns:
+            # Taker Buy Volume is aggressive buying
+            # Taker Sell Volume = Total Volume - Taker Buy Volume
+            # OFI = Buy Volume - Sell Volume
+            dataframe['%-true_ofi'] = (2 * dataframe['taker_buy_base_volume']) - dataframe['volume']
+            
+            # Whale Proxy without tick data: 
+            # Look for volume spikes where taker volume is dominant (>60% of total volume)
+            dataframe['%-whale_volume'] = np.where(
+                (dataframe['taker_buy_base_volume'] / dataframe['volume'] > 0.6) | 
+                (dataframe['taker_buy_base_volume'] / dataframe['volume'] < 0.4),
+                dataframe['volume'], 0
+            )
         else:
+            # Fallback for exchanges that don't provide taker volume
             dataframe['%-true_ofi'] = 0
             dataframe['%-whale_volume'] = 0
 
