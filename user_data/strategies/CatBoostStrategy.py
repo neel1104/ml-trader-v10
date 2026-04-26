@@ -26,6 +26,39 @@ class CatBoostStrategy(IStrategy):
         dataframe[f"%-rsi-{period}"] = ta.RSI(dataframe, timeperiod=period)
         dataframe[f"%-mfi-{period}"] = ta.MFI(dataframe, timeperiod=period)
         dataframe[f"%-adx-{period}"] = ta.ADX(dataframe, timeperiod=period)
+
+        # Phase 3: Smart Money Features (Tick-level)
+        metadata = kwargs.get('metadata', {})
+        if self.dp and metadata:
+            pair = metadata.get('pair')
+            trades = self.dp.trades(pair)
+            if trades is not None and not trades.empty:
+                trades_df = trades.set_index('date')
+
+                # Calculate True OFI (Buy Volume - Sell Volume)
+                buy_vol = trades_df[trades_df['side'] == 'buy']['amount'].resample(self.timeframe).sum()
+                sell_vol = trades_df[trades_df['side'] == 'sell']['amount'].resample(self.timeframe).sum()
+                ofi = buy_vol.sub(sell_vol, fill_value=0)
+
+                # Calculate Whale Proxy (Volume of top 5% of trades)
+                whale_thresh = trades_df['amount'].quantile(0.95) if not trades_df.empty else 0
+                whale_vol = trades_df[trades_df['amount'] > whale_thresh]['amount'].resample(self.timeframe).sum()
+
+                # Create a temporary dataframe to align indices
+                temp_df = pd.DataFrame({'%-true_ofi': ofi, '%-whale_volume': whale_vol})
+
+                # Set dataframe index to merge
+                dataframe = dataframe.set_index('date')
+                # Join and fill missing with 0
+                dataframe = dataframe.join(temp_df).fillna({'%-true_ofi': 0, '%-whale_volume': 0})
+                dataframe = dataframe.reset_index()
+            else:
+                dataframe['%-true_ofi'] = 0
+                dataframe['%-whale_volume'] = 0
+        else:
+            dataframe['%-true_ofi'] = 0
+            dataframe['%-whale_volume'] = 0
+
         return dataframe
 
     def feature_engineering_expand_basic(self, dataframe: pd.DataFrame, **kwargs) -> pd.DataFrame:
