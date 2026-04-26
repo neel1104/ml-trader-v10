@@ -135,9 +135,9 @@ Building a sustainable income stream requires moving beyond the "Profit and Loss
 ### Risk-Adjusted Ratios
 
 The three pillars of performance evaluation in cryptocurrency are:
-- **Sharpe Ratio:** Measures excess return per unit of total volatility. In crypto, a Sharpe ratio > 1.0 is acceptable, > 1.5 is good, and > 2.0 is considered elite.
-- **Sortino Ratio:** Refines the Sharpe ratio by focusing exclusively on downside deviation. An institutional-grade target is a Sortino ratio > 3.0.
-- **Calmar Ratio:** Measures annualized return against the maximum drawdown. A Calmar ratio > 2.0 indicates that the strategy's returns are high enough to justify the "pain" of its worst peak-to-trough decline.
+- **Sharpe Ratio:** Measures excess return per unit of total volatility. In crypto, a Sharpe ratio > 1.0 is acceptable, > 1.5 is good, and > 2.0 is considered elite. However, the Sharpe ratio penalizes "upward volatility" (big gains) just as much as losses, which can be misleading for trend-following strategies.
+- **Sortino Ratio:** Refines the Sharpe ratio by focusing exclusively on downside deviation. An institutional-grade target is a Sortino ratio > 3.0. This is the preferred metric for asymmetric crypto strategies.
+- **Calmar Ratio:** Measures annualized return against the maximum drawdown. A Calmar ratio > 2.0 indicates that the strategy's returns are high enough to justify the "pain" of its worst peak-to-trough decline. This is the ultimate "survivability" metric.
 
 | Performance Metric | Institutional Threshold | Significance for Passive Income |
 | :--- | :--- | :--- |
@@ -188,7 +188,7 @@ The transition from research to production requires a focus on execution quality
 **Latency Optimization and Colocation**
 In the competitive crypto landscape, the decision-to-execution cycle must occur within milliseconds.
 - **WebSocket Integration:** Modern bots utilize WebSocket streams for order book updates at 100ms intervals, bypassing the latency of REST APIs.
-- **Cloud Hubs:** Colocating trading infrastructure with exchange matching engines in hubs like Tokyo, Singapore, or Hong Kong can reduce network latency to microsecond levels.
+- **Cloud Hubs:** Colocating trading infrastructure with exchange matching engines in hubs like Tokyo, Singapore, or Hong Kong can reduce network latency to microsecond levels. Dedicated network services like Alibaba Cloud's Express Connect bypass the public internet for faster and more secure transmission.
 - **Execution Bots:** Tools like Freqtrade and Hummingbot provide production-grade frameworks for managing order book dynamics, slippage, and automated rebalancing.
 
 **The Agentic Paradigm and LLM Integration**
