@@ -12,6 +12,12 @@ class CatBoostStrategy(IStrategy):
     can_short = True
     startup_candle_count = 100
 
+    # Mandatory attributes
+    stoploss = -0.10
+    minimal_roi = {
+        "0": 0.05
+    }
+
     def feature_engineering_expand_all(self, dataframe: pd.DataFrame, period: int, **kwargs) -> pd.DataFrame:
         dataframe[f"%-rsi-{period}"] = ta.RSI(dataframe, timeperiod=period)
         dataframe[f"%-mfi-{period}"] = ta.MFI(dataframe, timeperiod=period)
@@ -51,19 +57,17 @@ class CatBoostStrategy(IStrategy):
             dataframe["do_predict"] == 1,
             dataframe["&-s_close"] > 0.01  # Predicted to go up > 1%
         ]
-        if enter_long_conditions:
-            dataframe.loc[
-                reduce(lambda x, y: x & y, enter_long_conditions), ["enter_long", "enter_tag"]
-            ] = (1, "freqai_long")
+        dataframe.loc[
+            reduce(lambda x, y: x & y, enter_long_conditions), ["enter_long", "enter_tag"]
+        ] = (1, "freqai_long")
 
         enter_short_conditions = [
             dataframe["do_predict"] == 1,
             dataframe["&-s_close"] < -0.01 # Predicted to go down > 1%
         ]
-        if enter_short_conditions:
-            dataframe.loc[
-                reduce(lambda x, y: x & y, enter_short_conditions), ["enter_short", "enter_tag"]
-            ] = (1, "freqai_short")
+        dataframe.loc[
+            reduce(lambda x, y: x & y, enter_short_conditions), ["enter_short", "enter_tag"]
+        ] = (1, "freqai_short")
 
         return dataframe
 
@@ -72,14 +76,12 @@ class CatBoostStrategy(IStrategy):
             dataframe["do_predict"] == 1,
             dataframe["&-s_close"] < 0
         ]
-        if exit_long_conditions:
-            dataframe.loc[reduce(lambda x, y: x & y, exit_long_conditions), "exit_long"] = 1
+        dataframe.loc[reduce(lambda x, y: x & y, exit_long_conditions), "exit_long"] = 1
 
         exit_short_conditions = [
             dataframe["do_predict"] == 1,
             dataframe["&-s_close"] > 0
         ]
-        if exit_short_conditions:
-            dataframe.loc[reduce(lambda x, y: x & y, exit_short_conditions), "exit_short"] = 1
+        dataframe.loc[reduce(lambda x, y: x & y, exit_short_conditions), "exit_short"] = 1
 
         return dataframe
