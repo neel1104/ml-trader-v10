@@ -8,4 +8,4 @@ def test_config_validity():
         config = json.load(f)
     assert config["dry_run"] is True
     assert config["freqai"]["enabled"] is True
-    assert "BTC/USDT" in config["exchange"]["pair_whitelist"]
+    assert "BTC/USDT:USDT" in config["exchange"]["pair_whitelist"]
