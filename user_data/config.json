@@ -19,7 +19,7 @@
     "trading_mode": "futures",
     "margin_mode": "isolated",
     "entry_pricing": {
-        "price_side": "same",
+        "price_side": "other",
         "use_order_book": true,
         "order_book_top": 1,
         "check_depth_of_market": {
@@ -28,7 +28,7 @@
         }
     },
     "exit_pricing": {
-        "price_side": "same",
+        "price_side": "other",
         "use_order_book": true,
         "order_book_top": 1
     },
@@ -54,18 +54,19 @@
         "purge_old_models": 2,
         "train_period_days": 30,
         "backtest_period_days": 7,
-        "identifier": "stat_arb_final",
+        "identifier": "stat_arb_v16",
         "model_name": "CatboostRegressor",
         "model_training_parameters": {
-            "iterations": 500,
+            "iterations": 1000,
             "depth": 6,
-            "learning_rate": 0.05
+            "learning_rate": 0.01
         },
         "feature_parameters": {
+            "DI_threshold": 1000,
             "include_timeframes": ["5m", "15m", "1h"],
             "include_periods": [14, 28],
             "include_corr_pairlist": ["BTC/USDT:USDT", "ETH/USDT:USDT"],
-            "indicator_periods_candles": [10, 20],
+            "indicator_periods_candles": [10, 14, 20],
             "label_period_candles": 3
         },
         "data_split_parameters": {
