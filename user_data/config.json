@@ -56,10 +56,17 @@
         "backtest_period_days": 7,
         "identifier": "catboost_model_v1",
         "model_name": "CatboostRegressor",
+        "model_training_parameters": {
+            "iterations": 100,
+            "depth": 5,
+            "learning_rate": 0.1
+        },
         "feature_parameters": {
             "include_timeframes": ["5m", "15m", "1h"],
             "include_periods": [14, 28],
-            "include_corr_pairlist": ["BTC/USDT:USDT", "ETH/USDT:USDT"]
+            "include_corr_pairlist": ["BTC/USDT:USDT", "ETH/USDT:USDT"],
+            "indicator_periods_candles": [10, 20],
+            "label_period_candles": 3
         },
         "data_split_parameters": {
             "test_size": 0.25
