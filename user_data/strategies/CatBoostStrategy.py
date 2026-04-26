@@ -1,7 +1,7 @@
 # user_data/strategies/CatBoostStrategy.py
 import pandas as pd
 from functools import reduce
-from freqtrade.strategy import IStrategy
+from freqtrade.strategy import IStrategy, DecimalParameter
 import talib.abstract as ta
 
 class CatBoostStrategy(IStrategy):
@@ -17,6 +17,10 @@ class CatBoostStrategy(IStrategy):
     minimal_roi = {
         "0": 0.05
     }
+
+    # Hyperopt parameters
+    buy_threshold = DecimalParameter(0.0005, 0.02, default=0.001, space='buy')
+    sell_threshold = DecimalParameter(-0.02, -0.0005, default=-0.001, space='sell')
 
     def feature_engineering_expand_all(self, dataframe: pd.DataFrame, period: int, **kwargs) -> pd.DataFrame:
         dataframe[f"%-rsi-{period}"] = ta.RSI(dataframe, timeperiod=period)
@@ -55,7 +59,7 @@ class CatBoostStrategy(IStrategy):
     def populate_entry_trend(self, dataframe: pd.DataFrame, metadata: dict) -> pd.DataFrame:
         enter_long_conditions = [
             dataframe["do_predict"] == 1,
-            dataframe["&-s_close"] > 0.001  # Predicted to go up > 0.1%
+            dataframe["&-s_close"] > self.buy_threshold.value
         ]
         dataframe.loc[
             reduce(lambda x, y: x & y, enter_long_conditions), ["enter_long", "enter_tag"]
@@ -63,7 +67,7 @@ class CatBoostStrategy(IStrategy):
 
         enter_short_conditions = [
             dataframe["do_predict"] == 1,
-            dataframe["&-s_close"] < -0.001 # Predicted to go down > 0.1%
+            dataframe["&-s_close"] < self.sell_threshold.value
         ]
         dataframe.loc[
             reduce(lambda x, y: x & y, enter_short_conditions), ["enter_short", "enter_tag"]

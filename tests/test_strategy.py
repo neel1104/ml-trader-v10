@@ -15,6 +15,19 @@ def test_strategy_loads():
     assert strategy.timeframe == "5m"
     assert hasattr(strategy, "feature_engineering_expand_all")
 
+def test_hyperopt_parameters():
+    from freqtrade.configuration import Configuration
+    from freqtrade.resolvers import StrategyResolver
+    config = Configuration.from_files(["user_data/config.json"])
+    config["strategy_path"] = "user_data/strategies"
+    config["strategy"] = "CatBoostStrategy"
+    config["trading_mode"] = "futures"
+    config["margin_mode"] = "isolated"
+    strategy = StrategyResolver.load_strategy(config)
+    
+    assert hasattr(strategy.__class__, 'buy_threshold')
+    assert hasattr(strategy.__class__, 'sell_threshold')
+
 def test_microstructure_features():
     from freqtrade.configuration import Configuration
     from freqtrade.resolvers import StrategyResolver
