@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "ml_trader_v10",
+  "project_id": "f952e915-e877-4d07-ad2e-4bd56d2cfb7c"
+}
