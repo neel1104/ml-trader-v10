@@ -30,7 +30,8 @@
         "model_name": "CatboostRegressor",
         "feature_parameters": {
             "include_timeframes": ["5m", "15m", "1h"],
-            "include_corr_pairlists": ["BTC/USDT", "ETH/USDT"]
+            "include_periods": [14, 28],
+            "include_corr_pairlist": ["BTC/USDT", "ETH/USDT"]
         },
         "data_split_parameters": {
             "test_size": 0.25
