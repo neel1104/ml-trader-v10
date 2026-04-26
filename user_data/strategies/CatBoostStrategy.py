@@ -21,6 +21,13 @@ class CatBoostStrategy(IStrategy):
     def feature_engineering_expand_basic(self, dataframe: pd.DataFrame, **kwargs) -> pd.DataFrame:
         dataframe["%-pct-change"] = dataframe["close"].pct_change()
         dataframe["%-volume-change"] = dataframe["volume"].pct_change()
+        
+        # Microstructure features integration (Phase 1)
+        dataframe["%-spread"] = dataframe["high"] - dataframe["low"]
+        dataframe["%-price-range"] = (dataframe["close"] - dataframe["low"]) / (dataframe["high"] - dataframe["low"] + 0.0001)
+        
+        # Mocking Cumulative Volume Delta (CVD) as volume * price direction
+        dataframe["%-mock-cvd"] = dataframe["volume"] * (dataframe["close"] - dataframe["open"])
         return dataframe
 
     def feature_engineering_standard(self, dataframe: pd.DataFrame, **kwargs) -> pd.DataFrame:
