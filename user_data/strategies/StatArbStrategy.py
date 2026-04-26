@@ -2,6 +2,7 @@
 import pandas as pd
 import numpy as np
 from functools import reduce
+from datetime import datetime
 from freqtrade.strategy import IStrategy, DecimalParameter, IntParameter
 import talib.abstract as ta
 import logging
@@ -20,17 +21,25 @@ class StatArbStrategy(IStrategy):
     # Mandatory attributes
     stoploss = -0.05
     minimal_roi = {
-        "0": 0.02
+        "0": 0.03
     }
+    
+    trailing_stop = True
+    trailing_stop_positive = 0.01
+    trailing_stop_positive_offset = 0.02
+    trailing_only_offset_is_reached = True
+
+    # Fee settings
+    use_custom_fee = True
 
     # Hyperopt parameters
-    zscore_entry = DecimalParameter(1.0, 3.0, default=2.0, space='buy')
+    zscore_entry = DecimalParameter(2.0, 4.0, default=2.5, space='buy')
     zscore_exit = DecimalParameter(-0.5, 0.5, default=0, space='sell')
     lookback_period = IntParameter(20, 200, default=100, space='buy')
     
     # Target specific magnitudes
-    min_predicted_magnitude = DecimalParameter(0.5, 2.0, default=1.0, space='buy') # In Z-score units
-    min_reversion_speed = DecimalParameter(0.1, 1.0, default=0.2, space='buy') # Z-score change per candle
+    min_predicted_magnitude = DecimalParameter(0.5, 2.0, default=1.0, space='buy')
+    min_reversion_speed = DecimalParameter(0.2, 1.0, default=0.5, space='buy')
     
     # Toggles to let hyperopt decide which filters are actually helping
     use_freqai_reversion = DecimalParameter(0, 1, default=0.5, space='buy') # > 0.5 means use it
@@ -46,15 +55,18 @@ class StatArbStrategy(IStrategy):
     def informative_pairs(self):
         """
         Define the pairs to be loaded synchronously.
-        For Stat-Arb, we need both pairs available to calculate the spread.
+        We always need BTC/USDT to calculate relative spreads for other pairs.
         """
         return [
             ("BTC/USDT:USDT", self.timeframe),
             ("ETH/USDT:USDT", self.timeframe),
+            ("SOL/USDT:USDT", self.timeframe),
+            ("AVAX/USDT:USDT", self.timeframe),
         ]
 
     def calculate_zscore(self, dataframe: pd.DataFrame, metadata: dict) -> pd.DataFrame:
         pair = metadata.get("pair")
+        # If the pair is BTC, we spread against ETH. Otherwise, spread against BTC.
         other_pair = "ETH/USDT:USDT" if pair == "BTC/USDT:USDT" else "BTC/USDT:USDT"
         other_df = self.dp.get_pair_dataframe(other_pair, self.timeframe)
         
@@ -72,12 +84,14 @@ class StatArbStrategy(IStrategy):
             spread_std = spread.rolling(window=lookback).std()
             dataframe['%-zscore'] = (spread - spread_mean) / (spread_std + 0.0001)
             dataframe['%-zscore_diff'] = dataframe['%-zscore'].diff()
+            dataframe['%-volatility'] = spread.rolling(window=30).std()
             
             # print(f"DEBUG: {pair} spread min/max: {spread.min():.4f}/{spread.max():.4f}, zscore min/max: {dataframe['%-zscore'].min():.4f}/{dataframe['%-zscore'].max():.4f}")
         else:
             # print(f"DEBUG: Empty data for {other_pair} while processing {pair}")
             dataframe['%-zscore'] = 0
             dataframe['%-zscore_diff'] = 0
+            dataframe['%-volatility'] = 0
             
         return dataframe
 
@@ -191,3 +205,10 @@ class StatArbStrategy(IStrategy):
         dataframe.loc[reduce(lambda x, y: x & y, exit_short_conditions), "exit_short"] = 1
 
         return dataframe
+
+    def custom_fee(self, pair: str, trade_type: str, temporary_entry_fee: float, temporary_exit_fee: float,
+                   actual_fee: float, **kwargs) -> float:
+        """
+        Force maker fee (0.02%) for backtesting Maker-Only execution.
+        """
+        return 0.0002
