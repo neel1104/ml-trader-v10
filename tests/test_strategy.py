@@ -8,6 +8,8 @@ def test_strategy_loads():
     # Mocking strategy directory
     config["strategy_path"] = "user_data/strategies"
     config["strategy"] = "CatBoostStrategy"
+    config["trading_mode"] = "futures"
+    config["margin_mode"] = "isolated"
     
     strategy = StrategyResolver.load_strategy(config)
     assert strategy.timeframe == "5m"

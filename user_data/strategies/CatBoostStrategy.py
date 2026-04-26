@@ -13,9 +13,9 @@ class CatBoostStrategy(IStrategy):
     startup_candle_count = 100
 
     def feature_engineering_expand_all(self, dataframe: pd.DataFrame, period: int, **kwargs) -> pd.DataFrame:
-        dataframe[f"%-rsi-period"] = ta.RSI(dataframe, timeperiod=period)
-        dataframe[f"%-mfi-period"] = ta.MFI(dataframe, timeperiod=period)
-        dataframe[f"%-adx-period"] = ta.ADX(dataframe, timeperiod=period)
+        dataframe[f"%-rsi-{period}"] = ta.RSI(dataframe, timeperiod=period)
+        dataframe[f"%-mfi-{period}"] = ta.MFI(dataframe, timeperiod=period)
+        dataframe[f"%-adx-{period}"] = ta.ADX(dataframe, timeperiod=period)
         return dataframe
 
     def feature_engineering_expand_basic(self, dataframe: pd.DataFrame, **kwargs) -> pd.DataFrame:
@@ -24,8 +24,8 @@ class CatBoostStrategy(IStrategy):
         return dataframe
 
     def feature_engineering_standard(self, dataframe: pd.DataFrame, **kwargs) -> pd.DataFrame:
-        dataframe["day_of_week"] = dataframe["date"].dt.dayofweek
-        dataframe["hour_of_day"] = dataframe["date"].dt.hour
+        dataframe["%-day_of_week"] = dataframe["date"].dt.dayofweek
+        dataframe["%-hour_of_day"] = dataframe["date"].dt.hour
         return dataframe
 
     def set_freqai_targets(self, dataframe: pd.DataFrame, **kwargs) -> pd.DataFrame:
