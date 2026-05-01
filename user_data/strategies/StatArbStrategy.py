@@ -32,8 +32,11 @@ class StatArbStrategy(IStrategy):
     # Fee settings
     use_custom_fee = True
 
-    # Hyperopt parameters
-    zscore_entry = DecimalParameter(2.0, 4.0, default=2.5, space='buy')
+    # Hyperopt parameters (Funding Regimes)
+    zscore_fav = DecimalParameter(1.5, 3.0, default=2.0, space='buy')
+    zscore_neu = DecimalParameter(2.0, 3.5, default=2.5, space='buy')
+    zscore_pen = DecimalParameter(3.0, 4.5, default=3.5, space='buy')
+    
     zscore_exit = DecimalParameter(-0.5, 0.5, default=0, space='sell')
     lookback_period = IntParameter(20, 200, default=100, space='buy')
     
@@ -171,21 +174,15 @@ class StatArbStrategy(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: pd.DataFrame, metadata: dict) -> pd.DataFrame:
-        # Define base thresholds for Funding Regimes
-        # Benefit > 0.01% per 8h is Favorable
-        z_fav = 2.0
-        z_neu = 2.5
-        z_pen = 3.5
-
         # Long Entry: Z-score low
         fav_long = (dataframe['%-funding_benefit_long'] > 0.0001)
         pen_long = (dataframe['%-funding_benefit_long'] < -0.0001)
         neu_long = ~(fav_long | pen_long)
 
         enter_long_conditions = [
-            (fav_long & (dataframe["%-zscore"] < -z_fav)) |
-            (neu_long & (dataframe["%-zscore"] < -z_neu)) |
-            (pen_long & (dataframe["%-zscore"] < -z_pen)),
+            (fav_long & (dataframe["%-zscore"] < -self.zscore_fav.value)) |
+            (neu_long & (dataframe["%-zscore"] < -self.zscore_neu.value)) |
+            (pen_long & (dataframe["%-zscore"] < -self.zscore_pen.value)),
             dataframe["do_predict"] == 1,
             dataframe["&-zscore_target"] > dataframe["%-zscore"],
             (dataframe["&-zscore_target"] - dataframe["%-zscore"]) > self.min_predicted_magnitude.value
@@ -214,9 +211,9 @@ class StatArbStrategy(IStrategy):
         neu_short = ~(fav_short | pen_short)
 
         enter_short_conditions = [
-            (fav_short & (dataframe["%-zscore"] > z_fav)) |
-            (neu_short & (dataframe["%-zscore"] > z_neu)) |
-            (pen_short & (dataframe["%-zscore"] > z_pen)),
+            (fav_short & (dataframe["%-zscore"] > self.zscore_fav.value)) |
+            (neu_short & (dataframe["%-zscore"] > self.zscore_neu.value)) |
+            (pen_short & (dataframe["%-zscore"] > self.zscore_pen.value)),
             dataframe["do_predict"] == 1,
             dataframe["&-zscore_target"] < dataframe["%-zscore"],
             (dataframe["%-zscore"] - dataframe["&-zscore_target"]) > self.min_predicted_magnitude.value

@@ -17,23 +17,25 @@
       "max_open_trades": 3
     },
     "buy": {
-      "lookback_period": 169,
-      "mfi_threshold_long": 38.697,
-      "mfi_threshold_short": 66.458,
-      "min_predicted_magnitude": 1.822,
-      "min_reversion_speed": 0.888,
-      "rsi_threshold_long": 40.129,
-      "rsi_threshold_short": 68.351,
-      "use_freqai_reversion": 0.421,
-      "use_mfi_filter": 0.126,
-      "use_ofi_filter": 0.331,
-      "use_rsi_filter": 0.41,
-      "zscore_entry": 2.53
+      "lookback_period": 190,
+      "mfi_threshold_long": 37.674,
+      "mfi_threshold_short": 63.667,
+      "min_predicted_magnitude": 1.993,
+      "min_reversion_speed": 0.864,
+      "rsi_threshold_long": 38.888,
+      "rsi_threshold_short": 69.295,
+      "use_freqai_reversion": 0.887,
+      "use_mfi_filter": 0.112,
+      "use_ofi_filter": 0.434,
+      "use_rsi_filter": 0.149,
+      "zscore_fav": 2.989,
+      "zscore_neu": 2.87,
+      "zscore_pen": 3.839
     },
     "sell": {
-      "zscore_exit": -0.233
+      "zscore_exit": -0.058
     }
   },
   "ft_stratparam_v": 1,
-  "export_time": "2026-05-01 05:01:32.302601+00:00"
+  "export_time": "2026-05-01 07:14:19.836719+00:00"
 }
