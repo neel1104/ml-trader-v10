@@ -50,6 +50,9 @@ class StatArbStrategy(IStrategy):
     use_mfi_filter = DecimalParameter(0, 1, default=0.5, space='buy')
     use_ofi_filter = DecimalParameter(0, 1, default=0.5, space='buy')
     
+    # Guardrails
+    use_cvd_filter = DecimalParameter(0, 1, default=0.5, space='buy')
+    
     # Fixed toggles (Forced On)
     use_trend_filter = 1.0
 
@@ -128,11 +131,31 @@ class StatArbStrategy(IStrategy):
             dataframe['%-funding_benefit_long'] = 0
             dataframe['%-funding_benefit_short'] = 0
 
-        # Microstructure integration
+        # Microstructure integration: CVD Calculation
         if 'taker_buy_base_volume' in dataframe.columns:
-             dataframe['%-ofi'] = (2 * dataframe['taker_buy_base_volume']) - dataframe['volume']
+             taker_sell_base_volume = dataframe['volume'] - dataframe['taker_buy_base_volume']
+             volume_delta = dataframe['taker_buy_base_volume'] - taker_sell_base_volume
+             dataframe['%-ofi'] = volume_delta
+
+             # CVD over 1h (12 * 5m) and 4h (48 * 5m)
+             cvd_1h = volume_delta.rolling(window=12).sum()
+             cvd_4h = volume_delta.rolling(window=48).sum()
+
+             # 24h Z-score of CVD (288 * 5m)
+             cvd_1h_mean = cvd_1h.rolling(window=288).mean()
+             cvd_1h_std = cvd_1h.rolling(window=288).std()
+             dataframe['%-cvd_zscore_1h'] = (cvd_1h - cvd_1h_mean) / (cvd_1h_std + 0.0001)
+
+             cvd_4h_mean = cvd_4h.rolling(window=288).mean()
+             cvd_4h_std = cvd_4h.rolling(window=288).std()
+             dataframe['%-cvd_zscore_4h'] = (cvd_4h - cvd_4h_mean) / (cvd_4h_std + 0.0001)             
+             # Fill initial NaNs with 0
+             dataframe['%-cvd_zscore_1h'] = dataframe['%-cvd_zscore_1h'].fillna(0)
+             dataframe['%-cvd_zscore_4h'] = dataframe['%-cvd_zscore_4h'].fillna(0)
         else:
              dataframe['%-ofi'] = 0
+             dataframe['%-cvd_zscore_1h'] = 0
+             dataframe['%-cvd_zscore_4h'] = 0
 
         return dataframe
 
@@ -207,6 +230,9 @@ class StatArbStrategy(IStrategy):
         if self.use_ofi_filter.value > 0.5:
              enter_long_conditions.append(dataframe.get("%-ofi", dataframe.get("%-ofi_5m", 0)) > 0)
 
+        if self.use_cvd_filter.value > 0.5:
+             enter_long_conditions.append(dataframe.get("%-cvd_zscore_1h", dataframe.get("%-cvd_zscore_1h_5m", 0)) > 0)
+
         dataframe.loc[
             reduce(lambda x, y: x & y, enter_long_conditions), ["enter_long", "enter_tag"]
         ] = (1, "stat_arb_long_harvest")
@@ -236,6 +262,9 @@ class StatArbStrategy(IStrategy):
              
         if self.use_ofi_filter.value > 0.5:
              enter_short_conditions.append(dataframe.get("%-ofi", dataframe.get("%-ofi_5m", 0)) < 0)
+
+        if self.use_cvd_filter.value > 0.5:
+             enter_short_conditions.append(dataframe.get("%-cvd_zscore_1h", dataframe.get("%-cvd_zscore_1h_5m", 0)) < 0)
 
         dataframe.loc[
             reduce(lambda x, y: x & y, enter_short_conditions), ["enter_short", "enter_tag"]
