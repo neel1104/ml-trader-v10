@@ -18,7 +18,6 @@
             "ETH/USDT:USDT",
             "SOL/USDT:USDT",
             "AVAX/USDT:USDT",
-            "MATIC/USDT:USDT",
             "LINK/USDT:USDT",
             "ADA/USDT:USDT",
             "DOT/USDT:USDT",
@@ -28,14 +27,7 @@
             "BCH/USDT:USDT",
             "XRP/USDT:USDT",
             "TRX/USDT:USDT",
-            "UNI/USDT:USDT",
-            "APT/USDT:USDT",
-            "ARB/USDT:USDT",
-            "OP/USDT:USDT",
-            "SUI/USDT:USDT",
-            "INJ/USDT:USDT",
-            "RNDR/USDT:USDT",
-            "FET/USDT:USDT"
+            "UNI/USDT:USDT"
         ],
         "pair_blacklist": [],
         "base_fee": 0.0002
@@ -78,9 +70,9 @@
     "freqai": {
         "enabled": true,
         "purge_old_models": 2,
-        "train_period_days": 30,
-        "backtest_period_days": 7,
-        "identifier": "market_rent_v1",
+        "train_period_days": 7,
+        "backtest_period_days": 3,
+        "identifier": "market_rent_v6",
 
         "model_name": "CatboostRegressor",
         "model_training_parameters": {

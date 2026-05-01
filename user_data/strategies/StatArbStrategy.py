@@ -158,6 +158,16 @@ class StatArbStrategy(IStrategy):
 
         dataframe = self.freqai.start(dataframe, metadata, self)
         dataframe = self.calculate_zscore(dataframe, metadata)
+
+        # Ensure funding benefits are available for entry logic (Market Rent)
+        if 'funding_rate' in dataframe.columns:
+            dataframe['%-funding_benefit_long'] = -dataframe['funding_rate']
+            dataframe['%-funding_benefit_short'] = dataframe['funding_rate']
+        else:
+            # Fallback to 0 if data is missing during simulation
+            dataframe['%-funding_benefit_long'] = 0
+            dataframe['%-funding_benefit_short'] = 0
+
         return dataframe
 
     def populate_entry_trend(self, dataframe: pd.DataFrame, metadata: dict) -> pd.DataFrame:
