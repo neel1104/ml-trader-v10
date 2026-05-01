@@ -50,6 +50,13 @@ bd close <id>         # Complete work
 <!-- END BEADS INTEGRATION -->
 
 
+## State Verification (CRITICAL)
+
+Before proposing next steps or acting on local files (e.g., plan documents, backtest results, hyperopt outputs):
+1. **Always verify the current git state** by running `git log -n 5 --oneline` and `git status`.
+2. **Always verify the current beads tracker state** by running `bd list` or `bd show`.
+3. **Never assume project completion state based solely on local artifact timestamps** or unchecked markdown plan checkboxes. The git repository and the beads issue tracker are the sole source of truth. Relying on outdated `backtest_results/` or `hyperopt_results/` files can lead to repeating already-completed work.
+
 ## Build & Test
 
 _Add your build and test commands here_
