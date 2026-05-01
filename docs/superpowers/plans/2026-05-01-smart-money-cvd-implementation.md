@@ -1,6 +1,6 @@
 # Smart Money CVD Injection Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Enhance the Market Rent Stat-Arb model by injecting Cumulative Volume Delta (CVD) as a proxy for institutional order flow ("Smart Money"), preventing false positive mean-reversion entries against strong directional trends.
 
@@ -15,14 +15,14 @@
 **Files:**
 - Modify: `user_data/strategies/StatArbStrategy.py`
 
-- [ ] **Step 1: Add new hyperopt parameter for CVD Filter**
+- [x] **Step 1: Add new hyperopt parameter for CVD Filter**
 
 ```python
     # Guardrails
     use_cvd_filter = DecimalParameter(0, 1, default=0.5, space='buy')
 ```
 
-- [ ] **Step 2: Modify `feature_engineering_expand_basic` to add CVD features**
+- [x] **Step 2: Modify `feature_engineering_expand_basic` to add CVD features**
 
 In `StatArbStrategy.py`, locate `feature_engineering_expand_basic` and add the CVD calculations.
 
@@ -72,7 +72,7 @@ In `StatArbStrategy.py`, locate `feature_engineering_expand_basic` and add the C
         return dataframe
 ```
 
-- [ ] **Step 3: Update `populate_entry_trend` with CVD Guardrails**
+- [x] **Step 3: Update `populate_entry_trend` with CVD Guardrails**
 
 In `StatArbStrategy.py`, locate `populate_entry_trend`. Add the `use_cvd_filter` block right after the other filter conditions (like `use_ofi_filter`).
 
@@ -88,7 +88,7 @@ And for short:
              enter_short_conditions.append(dataframe.get("%-cvd_zscore_1h", dataframe.get("%-cvd_zscore_1h_5m", 0)) < 0)
 ```
 
-- [ ] **Step 4: Update FreqAI Identifier in config**
+- [x] **Step 4: Update FreqAI Identifier in config**
 
 Modify `user_data/config.json`. Change `"identifier": "market_rent_v12_balanced"` to `"market_rent_v2_smartmoney"`.
 
@@ -96,12 +96,12 @@ Modify `user_data/config.json`. Change `"identifier": "market_rent_v12_balanced"
         "identifier": "market_rent_v2_smartmoney",
 ```
 
-- [ ] **Step 5: Run tests to verify the logic parses without errors**
+- [x] **Step 5: Run tests to verify the logic parses without errors**
 
 Run: `pytest tests/test_strategy.py`
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add user_data/strategies/StatArbStrategy.py user_data/config.json
@@ -115,12 +115,12 @@ git commit -m "feat: inject Smart Money CVD features and guardrail"
 **Files:**
 - Run: `freqtrade backtesting`
 
-- [ ] **Step 1: Test the FreqAI model training with new features**
+- [x] **Step 1: Test the FreqAI model training with new features**
 
 Run a short backtest to ensure FreqAI processes the new features correctly without dropping them.
 Run: `freqtrade backtesting --config user_data/config.json --strategy StatArbStrategy --freqaimodel CatboostRegressor --timerange 20260420-20260425`
 
-- [ ] **Step 2: Commit any final tweaks if needed**
+- [x] **Step 2: Commit any final tweaks if needed**
 
 If the backtest requires minor adjustments (like NaN handling tweaks), apply and commit them.
 
