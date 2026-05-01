@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from functools import reduce
 from datetime import datetime
-from freqtrade.strategy import IStrategy, DecimalParameter, IntParameter
+from freqtrade.strategy import IStrategy, DecimalParameter, IntParameter, merge_informative_pair
 import talib.abstract as ta
 import logging
 
@@ -46,6 +46,9 @@ class StatArbStrategy(IStrategy):
     use_rsi_filter = DecimalParameter(0, 1, default=0.5, space='buy')
     use_mfi_filter = DecimalParameter(0, 1, default=0.5, space='buy')
     use_ofi_filter = DecimalParameter(0, 1, default=0.5, space='buy')
+    
+    # Fixed toggles (Forced On)
+    use_trend_filter = 1.0
 
     rsi_threshold_long = DecimalParameter(30, 50, default=45, space='buy')
     rsi_threshold_short = DecimalParameter(50, 70, default=55, space='buy')
@@ -62,6 +65,7 @@ class StatArbStrategy(IStrategy):
             ("ETH/USDT:USDT", self.timeframe),
             ("SOL/USDT:USDT", self.timeframe),
             ("AVAX/USDT:USDT", self.timeframe),
+            ("BTC/USDT:USDT", "1h"),
         ]
 
     def calculate_zscore(self, dataframe: pd.DataFrame, metadata: dict) -> pd.DataFrame:
@@ -132,6 +136,16 @@ class StatArbStrategy(IStrategy):
         return dataframe
 
     def populate_indicators(self, dataframe: pd.DataFrame, metadata: dict) -> pd.DataFrame:
+        # BTC Trend Filter (1h)
+        btc_1h = self.dp.get_pair_dataframe("BTC/USDT:USDT", "1h")
+        if not btc_1h.empty:
+            btc_1h['ema_200'] = ta.EMA(btc_1h, timeperiod=200)
+            dataframe = merge_informative_pair(dataframe, btc_1h, self.timeframe, "1h", ffill=True)
+            # Check if current BTC price is above/below EMA 200 1h
+            dataframe['btc_above_ema_1h'] = (dataframe['close_1h'] > dataframe['ema_200_1h']).astype(int)
+        else:
+            dataframe['btc_above_ema_1h'] = 1 # Default to 1 if data is missing
+
         dataframe = self.freqai.start(dataframe, metadata, self)
         dataframe = self.calculate_zscore(dataframe, metadata)
         return dataframe
@@ -142,6 +156,10 @@ class StatArbStrategy(IStrategy):
             dataframe["%-zscore"] < -self.zscore_entry.value,
             dataframe["%-zscore_diff"] > self.min_reversion_speed.value # Speed check
         ]
+        
+        # Trend Filter
+        if self.use_trend_filter > 0.5:
+             enter_long_conditions.append(dataframe["btc_above_ema_1h"] == 1)
         
         # Optional Stacking
         if self.use_freqai_reversion.value > 0.5:
@@ -168,6 +186,10 @@ class StatArbStrategy(IStrategy):
             dataframe["%-zscore"] > self.zscore_entry.value,
             dataframe["%-zscore_diff"] < -self.min_reversion_speed.value
         ]
+        
+        # Trend Filter
+        if self.use_trend_filter > 0.5:
+             enter_short_conditions.append(dataframe["btc_above_ema_1h"] == 0)
         
         if self.use_freqai_reversion.value > 0.5:
              enter_short_conditions.append(dataframe["do_predict"] == 1)
