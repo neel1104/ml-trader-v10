@@ -40,9 +40,9 @@ class StatArbStrategy(IStrategy):
     zscore_exit = DecimalParameter(-0.5, 0.5, default=0, space='sell')
     lookback_period = IntParameter(20, 200, default=100, space='buy')
     
-    # Target specific magnitudes
-    min_predicted_magnitude = DecimalParameter(0.5, 2.0, default=1.0, space='buy')
-    min_reversion_speed = DecimalParameter(0.2, 1.0, default=0.5, space='buy')
+    # Expected Profit thresholds
+    min_expected_profit = DecimalParameter(0.003, 0.015, default=0.005, space='buy') # 0.3% to 1.5%
+    min_reversion_speed = DecimalParameter(0.1, 1.0, default=0.3, space='buy')
     
     # Toggles to let hyperopt decide which filters are actually helping
     use_freqai_reversion = DecimalParameter(0, 1, default=0.5, space='buy') # > 0.5 means use it
@@ -174,6 +174,12 @@ class StatArbStrategy(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: pd.DataFrame, metadata: dict) -> pd.DataFrame:
+        # Calculate expected percentage reversion: |target_z - current_z| * rolling_std_of_spread
+        dataframe['expected_reversion'] = (
+            (dataframe['&-zscore_target'] - dataframe['%-zscore']).abs() * 
+            dataframe['%-volatility']
+        )
+
         # Long Entry: Z-score low
         fav_long = (dataframe['%-funding_benefit_long'] > 0.0001)
         pen_long = (dataframe['%-funding_benefit_long'] < -0.0001)
@@ -185,7 +191,7 @@ class StatArbStrategy(IStrategy):
             (pen_long & (dataframe["%-zscore"] < -self.zscore_pen.value)),
             dataframe["do_predict"] == 1,
             dataframe["&-zscore_target"] > dataframe["%-zscore"],
-            (dataframe["&-zscore_target"] - dataframe["%-zscore"]) > self.min_predicted_magnitude.value
+            dataframe["expected_reversion"] > self.min_expected_profit.value
         ]
         
         # Optional Stacking filters (from previous version)
@@ -216,7 +222,7 @@ class StatArbStrategy(IStrategy):
             (pen_short & (dataframe["%-zscore"] > self.zscore_pen.value)),
             dataframe["do_predict"] == 1,
             dataframe["&-zscore_target"] < dataframe["%-zscore"],
-            (dataframe["%-zscore"] - dataframe["&-zscore_target"]) > self.min_predicted_magnitude.value
+            dataframe["expected_reversion"] > self.min_expected_profit.value
         ]
         
         if self.use_trend_filter > 0.5:
@@ -254,9 +260,16 @@ class StatArbStrategy(IStrategy):
 
         return dataframe
 
+    def custom_entry_price(self, pair: str, current_time: datetime, proposed_rate: float,
+                           entry_tag: str, side: str, **kwargs) -> float:
+        """
+        Always use limit orders to capture maker fees.
+        """
+        return proposed_rate
+
     def custom_fee(self, pair: str, trade_type: str, temporary_entry_fee: float, temporary_exit_fee: float,
                    actual_fee: float, **kwargs) -> float:
         """
-        Force maker fee (0.02%) for backtesting Maker-Only execution.
+        Force realistic maker fee (0.02%) for institutional-grade backtesting.
         """
         return 0.0002

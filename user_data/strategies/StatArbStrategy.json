@@ -1,12 +1,6 @@
 {
   "strategy_name": "StatArbStrategy",
   "params": {
-    "roi": {
-      "0": 0.02
-    },
-    "stoploss": {
-      "stoploss": -0.05
-    },
     "trailing": {
       "trailing_stop": false,
       "trailing_stop_positive": null,
@@ -17,25 +11,34 @@
       "max_open_trades": 3
     },
     "buy": {
-      "lookback_period": 190,
-      "mfi_threshold_long": 37.674,
-      "mfi_threshold_short": 63.667,
-      "min_predicted_magnitude": 1.993,
-      "min_reversion_speed": 0.864,
-      "rsi_threshold_long": 38.888,
-      "rsi_threshold_short": 69.295,
-      "use_freqai_reversion": 0.887,
-      "use_mfi_filter": 0.112,
-      "use_ofi_filter": 0.434,
-      "use_rsi_filter": 0.149,
-      "zscore_fav": 2.989,
-      "zscore_neu": 2.87,
-      "zscore_pen": 3.839
+      "lookback_period": 197,
+      "mfi_threshold_long": 41.847,
+      "mfi_threshold_short": 69.814,
+      "min_expected_profit": 0.007,
+      "min_reversion_speed": 0.591,
+      "rsi_threshold_long": 38.294,
+      "rsi_threshold_short": 53.537,
+      "use_freqai_reversion": 0.878,
+      "use_mfi_filter": 0.451,
+      "use_ofi_filter": 0.194,
+      "use_rsi_filter": 0.104,
+      "zscore_fav": 1.559,
+      "zscore_neu": 2.819,
+      "zscore_pen": 4.124
     },
     "sell": {
-      "zscore_exit": -0.058
+      "zscore_exit": 0.299
+    },
+    "roi": {
+      "0": 0.095,
+      "24": 0.063,
+      "83": 0.014,
+      "156": 0
+    },
+    "stoploss": {
+      "stoploss": -0.298
     }
   },
   "ft_stratparam_v": 1,
-  "export_time": "2026-05-01 07:14:19.836719+00:00"
+  "export_time": "2026-05-01 08:00:07.321511+00:00"
 }
