@@ -58,20 +58,22 @@ class StatArbStrategy(IStrategy):
     def informative_pairs(self):
         """
         Define the pairs to be loaded synchronously.
-        We always need BTC/USDT to calculate relative spreads for other pairs.
+        We load all pairs in the current whitelist and BTC/USDT as the anchor.
         """
-        return [
-            ("BTC/USDT:USDT", self.timeframe),
-            ("ETH/USDT:USDT", self.timeframe),
-            ("SOL/USDT:USDT", self.timeframe),
-            ("AVAX/USDT:USDT", self.timeframe),
-            ("BTC/USDT:USDT", "1h"),
-        ]
+        pairs = self.dp.current_whitelist()
+        informative_pairs = [(pair, self.timeframe) for pair in pairs]
+        informative_pairs.append(("BTC/USDT:USDT", "1h"))
+        return informative_pairs
 
     def calculate_zscore(self, dataframe: pd.DataFrame, metadata: dict) -> pd.DataFrame:
         pair = metadata.get("pair")
-        # If the pair is BTC, we spread against ETH. Otherwise, spread against BTC.
-        other_pair = "ETH/USDT:USDT" if pair == "BTC/USDT:USDT" else "BTC/USDT:USDT"
+        # Universal Anchor: BTC/USDT
+        other_pair = "BTC/USDT:USDT"
+        
+        # If the pair IS the anchor, spread against ETH for relative value
+        if pair == other_pair:
+             other_pair = "ETH/USDT:USDT"
+
         other_df = self.dp.get_pair_dataframe(other_pair, self.timeframe)
         
         if not other_df.empty:
@@ -89,10 +91,7 @@ class StatArbStrategy(IStrategy):
             dataframe['%-zscore'] = (spread - spread_mean) / (spread_std + 0.0001)
             dataframe['%-zscore_diff'] = dataframe['%-zscore'].diff()
             dataframe['%-volatility'] = spread.rolling(window=30).std()
-            
-            # print(f"DEBUG: {pair} spread min/max: {spread.min():.4f}/{spread.max():.4f}, zscore min/max: {dataframe['%-zscore'].min():.4f}/{dataframe['%-zscore'].max():.4f}")
         else:
-            # print(f"DEBUG: Empty data for {other_pair} while processing {pair}")
             dataframe['%-zscore'] = 0
             dataframe['%-zscore_diff'] = 0
             dataframe['%-volatility'] = 0
@@ -115,6 +114,17 @@ class StatArbStrategy(IStrategy):
         metadata = kwargs.get("metadata")
         dataframe = self.calculate_zscore(dataframe, metadata)
         
+        # Funding Regime Detection (Market Rent)
+        if 'funding_rate' in dataframe.columns:
+            # Net funding benefit: 
+            # If Long: Benefit = -funding_rate (we receive funding if rate is negative)
+            # If Short: Benefit = funding_rate (we receive funding if rate is positive)
+            dataframe['%-funding_benefit_long'] = -dataframe['funding_rate']
+            dataframe['%-funding_benefit_short'] = dataframe['funding_rate']
+        else:
+            dataframe['%-funding_benefit_long'] = 0
+            dataframe['%-funding_benefit_short'] = 0
+
         # Microstructure integration
         if 'taker_buy_base_volume' in dataframe.columns:
              dataframe['%-ofi'] = (2 * dataframe['taker_buy_base_volume']) - dataframe['volume']
@@ -151,23 +161,30 @@ class StatArbStrategy(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: pd.DataFrame, metadata: dict) -> pd.DataFrame:
-        # Long Entry: Z-score low (Mandatory)
+        # Define base thresholds for Funding Regimes
+        # Benefit > 0.01% per 8h is Favorable
+        z_fav = 2.0
+        z_neu = 2.5
+        z_pen = 3.5
+
+        # Long Entry: Z-score low
+        fav_long = (dataframe['%-funding_benefit_long'] > 0.0001)
+        pen_long = (dataframe['%-funding_benefit_long'] < -0.0001)
+        neu_long = ~(fav_long | pen_long)
+
         enter_long_conditions = [
-            dataframe["%-zscore"] < -self.zscore_entry.value,
-            dataframe["%-zscore_diff"] > self.min_reversion_speed.value # Speed check
+            (fav_long & (dataframe["%-zscore"] < -z_fav)) |
+            (neu_long & (dataframe["%-zscore"] < -z_neu)) |
+            (pen_long & (dataframe["%-zscore"] < -z_pen)),
+            dataframe["do_predict"] == 1,
+            dataframe["&-zscore_target"] > dataframe["%-zscore"],
+            (dataframe["&-zscore_target"] - dataframe["%-zscore"]) > self.min_predicted_magnitude.value
         ]
         
-        # Trend Filter
+        # Optional Stacking filters (from previous version)
         if self.use_trend_filter > 0.5:
              enter_long_conditions.append(dataframe["btc_above_ema_1h"] == 1)
-        
-        # Optional Stacking
-        if self.use_freqai_reversion.value > 0.5:
-             enter_long_conditions.append(dataframe["do_predict"] == 1)
-             enter_long_conditions.append(dataframe["&-zscore_target"] > dataframe["%-zscore"])
-             # Predicted reversion magnitude must be large enough
-             enter_long_conditions.append((dataframe["&-zscore_target"] - dataframe["%-zscore"]) > self.min_predicted_magnitude.value)
-        
+
         if self.use_rsi_filter.value > 0.5:
              enter_long_conditions.append(dataframe.get("%-rsi-14", dataframe.get("%-rsi-14_5m", 50)) < self.rsi_threshold_long.value)
              
@@ -179,23 +196,25 @@ class StatArbStrategy(IStrategy):
 
         dataframe.loc[
             reduce(lambda x, y: x & y, enter_long_conditions), ["enter_long", "enter_tag"]
-        ] = (1, "stat_arb_long_stacked")
+        ] = (1, "stat_arb_long_harvest")
 
-        # Short Entry: Z-score high (Mandatory)
+        # Short Entry: Z-score high
+        fav_short = (dataframe['%-funding_benefit_short'] > 0.0001)
+        pen_short = (dataframe['%-funding_benefit_short'] < -0.0001)
+        neu_short = ~(fav_short | pen_short)
+
         enter_short_conditions = [
-            dataframe["%-zscore"] > self.zscore_entry.value,
-            dataframe["%-zscore_diff"] < -self.min_reversion_speed.value
+            (fav_short & (dataframe["%-zscore"] > z_fav)) |
+            (neu_short & (dataframe["%-zscore"] > z_neu)) |
+            (pen_short & (dataframe["%-zscore"] > z_pen)),
+            dataframe["do_predict"] == 1,
+            dataframe["&-zscore_target"] < dataframe["%-zscore"],
+            (dataframe["%-zscore"] - dataframe["&-zscore_target"]) > self.min_predicted_magnitude.value
         ]
         
-        # Trend Filter
         if self.use_trend_filter > 0.5:
              enter_short_conditions.append(dataframe["btc_above_ema_1h"] == 0)
         
-        if self.use_freqai_reversion.value > 0.5:
-             enter_short_conditions.append(dataframe["do_predict"] == 1)
-             enter_short_conditions.append(dataframe["&-zscore_target"] < dataframe["%-zscore"])
-             enter_short_conditions.append((dataframe["%-zscore"] - dataframe["&-zscore_target"]) > self.min_predicted_magnitude.value)
-             
         if self.use_rsi_filter.value > 0.5:
              enter_short_conditions.append(dataframe.get("%-rsi-14", dataframe.get("%-rsi-14_5m", 50)) > self.rsi_threshold_short.value)
              
@@ -207,7 +226,7 @@ class StatArbStrategy(IStrategy):
 
         dataframe.loc[
             reduce(lambda x, y: x & y, enter_short_conditions), ["enter_short", "enter_tag"]
-        ] = (1, "stat_arb_short_stacked")
+        ] = (1, "stat_arb_short_harvest")
 
         return dataframe
 
