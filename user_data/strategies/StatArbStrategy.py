@@ -85,7 +85,7 @@ class StatArbStrategy(IStrategy):
         if not other_df.empty:
             # Align dataframes
             temp_df = pd.merge(dataframe[['date', 'close']], other_df[['date', 'close']], on='date', suffixes=('', '_other'), how='left')
-            temp_df['close_other'] = temp_df['close_other'].ffill()
+            temp_df['close_other'] = temp_df['close_other'].ffill().bfill()
             
             # Spread = log(PriceA) - log(PriceB)
             spread = np.log(temp_df['close']) - np.log(temp_df['close_other'])
@@ -94,9 +94,9 @@ class StatArbStrategy(IStrategy):
             lookback = self.lookback_period.value
             spread_mean = spread.rolling(window=lookback).mean()
             spread_std = spread.rolling(window=lookback).std()
-            dataframe['%-zscore'] = (spread - spread_mean) / (spread_std + 0.0001)
-            dataframe['%-zscore_diff'] = dataframe['%-zscore'].diff()
-            dataframe['%-volatility'] = spread.rolling(window=30).std()
+            dataframe['%-zscore'] = ((spread - spread_mean) / (spread_std + 0.0001)).fillna(0)
+            dataframe['%-zscore_diff'] = dataframe['%-zscore'].diff().fillna(0)
+            dataframe['%-volatility'] = spread.rolling(window=30).std().fillna(0)
         else:
             dataframe['%-zscore'] = 0
             dataframe['%-zscore_diff'] = 0
@@ -125,8 +125,8 @@ class StatArbStrategy(IStrategy):
             # Net funding benefit: 
             # If Long: Benefit = -funding_rate (we receive funding if rate is negative)
             # If Short: Benefit = funding_rate (we receive funding if rate is positive)
-            dataframe['%-funding_benefit_long'] = -dataframe['funding_rate']
-            dataframe['%-funding_benefit_short'] = dataframe['funding_rate']
+            dataframe['%-funding_benefit_long'] = -dataframe['funding_rate'].fillna(0)
+            dataframe['%-funding_benefit_short'] = dataframe['funding_rate'].fillna(0)
         else:
             dataframe['%-funding_benefit_long'] = 0
             dataframe['%-funding_benefit_short'] = 0
@@ -135,7 +135,7 @@ class StatArbStrategy(IStrategy):
         if 'taker_buy_base_volume' in dataframe.columns:
              taker_sell_base_volume = dataframe['volume'] - dataframe['taker_buy_base_volume']
              volume_delta = dataframe['taker_buy_base_volume'] - taker_sell_base_volume
-             dataframe['%-ofi'] = volume_delta
+             dataframe['%-ofi'] = volume_delta.fillna(0)
 
              # CVD over 1h (12 * 5m) and 4h (48 * 5m)
              cvd_1h = volume_delta.rolling(window=12).sum()
@@ -144,14 +144,11 @@ class StatArbStrategy(IStrategy):
              # 24h Z-score of CVD (288 * 5m)
              cvd_1h_mean = cvd_1h.rolling(window=288).mean()
              cvd_1h_std = cvd_1h.rolling(window=288).std()
-             dataframe['%-cvd_zscore_1h'] = (cvd_1h - cvd_1h_mean) / (cvd_1h_std + 0.0001)
+             dataframe['%-cvd_zscore_1h'] = ((cvd_1h - cvd_1h_mean) / (cvd_1h_std + 0.0001)).fillna(0)
 
              cvd_4h_mean = cvd_4h.rolling(window=288).mean()
              cvd_4h_std = cvd_4h.rolling(window=288).std()
-             dataframe['%-cvd_zscore_4h'] = (cvd_4h - cvd_4h_mean) / (cvd_4h_std + 0.0001)             
-             # Fill initial NaNs with 0
-             dataframe['%-cvd_zscore_1h'] = dataframe['%-cvd_zscore_1h'].fillna(0)
-             dataframe['%-cvd_zscore_4h'] = dataframe['%-cvd_zscore_4h'].fillna(0)
+             dataframe['%-cvd_zscore_4h'] = ((cvd_4h - cvd_4h_mean) / (cvd_4h_std + 0.0001)).fillna(0)             
         else:
              dataframe['%-ofi'] = 0
              dataframe['%-cvd_zscore_1h'] = 0
