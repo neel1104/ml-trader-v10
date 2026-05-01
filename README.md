@@ -59,3 +59,10 @@ Run the comprehensive test suite to verify the framework:
 export PYTHONPATH=$PYTHONPATH:.
 ./venv/bin/pytest tests/ -v
 ```
+
+## 🔍 Phase 4: Walk-Forward Optimization (WFO)
+To validate the strategy's robustness and calculate the Walk-Forward Efficiency (WFE) score, run the WFO pipeline. This will train on 14-day rolling windows and test on unseen 7-day forward windows.
+
+```bash
+./scripts/run_wfo.py --start 20260301 --end 20260425 --epochs 30
+```
