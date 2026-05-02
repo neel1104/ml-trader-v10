@@ -121,6 +121,7 @@ class StatArbStrategy(IStrategy):
         dataframe = self.calculate_zscore(dataframe, metadata)
         
         # Funding Regime Detection (Market Rent)
+        # Ensure these columns ALWAYS exist so the FreqAI feature list is deterministic
         if 'funding_rate' in dataframe.columns:
             # Net funding benefit: 
             # If Long: Benefit = -funding_rate (we receive funding if rate is negative)
@@ -128,18 +129,19 @@ class StatArbStrategy(IStrategy):
             dataframe['%-funding_benefit_long'] = -dataframe['funding_rate'].fillna(0)
             dataframe['%-funding_benefit_short'] = dataframe['funding_rate'].fillna(0)
         else:
-            dataframe['%-funding_benefit_long'] = 0
-            dataframe['%-funding_benefit_short'] = 0
+            dataframe['%-funding_benefit_long'] = 0.0
+            dataframe['%-funding_benefit_short'] = 0.0
 
         # Microstructure integration: CVD Calculation
+        # Ensure these columns ALWAYS exist so the FreqAI feature list is deterministic
         if 'taker_buy_base_volume' in dataframe.columns:
-             taker_sell_base_volume = dataframe['volume'] - dataframe['taker_buy_base_volume']
-             volume_delta = dataframe['taker_buy_base_volume'] - taker_sell_base_volume
-             dataframe['%-ofi'] = volume_delta.fillna(0)
+             taker_sell_base_volume = (dataframe['volume'] - dataframe['taker_buy_base_volume']).fillna(0)
+             volume_delta = (dataframe['taker_buy_base_volume'] - taker_sell_base_volume).fillna(0)
+             dataframe['%-ofi'] = volume_delta
 
              # CVD over 1h (12 * 5m) and 4h (48 * 5m)
-             cvd_1h = volume_delta.rolling(window=12).sum()
-             cvd_4h = volume_delta.rolling(window=48).sum()
+             cvd_1h = volume_delta.rolling(window=12).sum().fillna(0)
+             cvd_4h = volume_delta.rolling(window=48).sum().fillna(0)
 
              # 24h Z-score of CVD (288 * 5m)
              cvd_1h_mean = cvd_1h.rolling(window=288).mean()
@@ -150,9 +152,10 @@ class StatArbStrategy(IStrategy):
              cvd_4h_std = cvd_4h.rolling(window=288).std()
              dataframe['%-cvd_zscore_4h'] = ((cvd_4h - cvd_4h_mean) / (cvd_4h_std + 0.0001)).fillna(0)             
         else:
-             dataframe['%-ofi'] = 0
-             dataframe['%-cvd_zscore_1h'] = 0
-             dataframe['%-cvd_zscore_4h'] = 0
+             dataframe['%-ofi'] = 0.0
+             dataframe['%-cvd_zscore_1h'] = 0.0
+             dataframe['%-cvd_zscore_4h'] = 0.0
+
 
         return dataframe
 
