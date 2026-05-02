@@ -1,6 +1,6 @@
 # Phase 4 Walk-Forward Optimization (WFO) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Build a Walk-Forward Optimization (WFO) pipeline to rigorously test the Market Rent Stat-Arb model's edge across rolling time windows.
 
@@ -16,7 +16,7 @@
 - Create: `scripts/run_wfo.py`
 - Modify: `README.md` (to document the new command)
 
-- [ ] **Step 1: Write the WFO Python Script**
+- [x] **Step 1: Write the WFO Python Script**
 
 Create `scripts/run_wfo.py` with the following complete code:
 
@@ -139,11 +139,11 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: Make the script executable**
+- [x] **Step 2: Make the script executable**
 
 Run: `chmod +x scripts/run_wfo.py`
 
-- [ ] **Step 3: Update README.md**
+- [x] **Step 3: Update README.md**
 
 Modify `README.md`. Under the `## 🧪 Testing` section, add a new section for Phase 4 WFO:
 
@@ -156,7 +156,7 @@ To validate the strategy's robustness and calculate the Walk-Forward Efficiency 
 ```
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add scripts/run_wfo.py README.md
