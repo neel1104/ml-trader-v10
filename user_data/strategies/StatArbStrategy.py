@@ -30,13 +30,13 @@ class StatArbStrategy(IStrategy):
     trailing_only_offset_is_reached = True
 
     # Hyperoptable parameters
-    lookback_period = IntParameter(30, 200, default=100, space='buy')
-    zscore_fav = DecimalParameter(1.5, 3.5, default=2.0, space='buy')
-    zscore_neu = DecimalParameter(2.0, 4.0, default=2.8, space='buy')
-    zscore_pen = DecimalParameter(2.5, 5.0, default=3.5, space='buy')
+    lookback_period = IntParameter(20, 300, default=100, space='buy')
+    zscore_fav = DecimalParameter(1.0, 3.0, default=1.5, space='buy')
+    zscore_neu = DecimalParameter(1.5, 3.5, default=2.0, space='buy')
+    zscore_pen = DecimalParameter(2.0, 4.5, default=3.0, space='buy')
     zscore_exit = DecimalParameter(-1.0, 1.0, default=0.0, space='sell')
     
-    min_expected_profit = DecimalParameter(0.001, 0.05, default=0.01, space='buy')
+    min_expected_profit = DecimalParameter(0.0001, 0.01, default=0.001, space='buy')
     min_reversion_speed = DecimalParameter(0.01, 1.0, default=0.1, space='buy')
 
     # Guardrails
