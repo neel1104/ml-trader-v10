@@ -15,7 +15,7 @@
 **Files:**
 - Modify: `user_data/strategies/StatArbStrategy.py`
 
-- [ ] **Step 1: Add microstructure and technical filters to entry trend**
+- [x] **Step 1: Add microstructure and technical filters to entry trend**
 
 Modify `populate_entry_trend` to include `%-ofi`, `%-rsi`, and `%-mfi` filters.
 
@@ -51,7 +51,7 @@ Modify `populate_entry_trend` to include `%-ofi`, `%-rsi`, and `%-mfi` filters.
         return dataframe
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add user_data/strategies/StatArbStrategy.py
@@ -85,7 +85,7 @@ Increase iteration count and reduce learning rate for better convergence. Update
 ...
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add user_data/config.json

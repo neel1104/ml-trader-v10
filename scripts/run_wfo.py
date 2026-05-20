@@ -60,7 +60,7 @@ def main():
     parser.add_argument("--end", type=str, default="20260425", help="End date YYYYMMDD")
     parser.add_argument("--train-days", type=int, default=14, help="In-sample training days")
     parser.add_argument("--test-days", type=int, default=7, help="Out-of-sample testing days")
-    parser.add_argument("--epochs", type=int, default=30, help="Hyperopt epochs per window")
+    parser.add_argument("--epochs", type=int, default=300, help="Hyperopt epochs per window")
     parser.add_argument("--base-id", type=str, default=f"wfo_{run_ts}", help="FreqAI base identifier")
     args = parser.parse_args()
 
