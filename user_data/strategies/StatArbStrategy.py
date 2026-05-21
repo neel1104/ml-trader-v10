@@ -193,11 +193,11 @@ class StatArbStrategy(IStrategy):
             dataframe["expected_reversion"] > self.min_expected_profit.value
         ]
 
-        if self.use_trend_filter.value > 0.5:
+        if self.use_trend_filter:
              enter_short_conditions.append(dataframe["btc_above_ema_1h"] == 0)
-        if self.use_ofi_filter.value > 0.5:
+        if self.use_ofi_filter:
              enter_short_conditions.append(dataframe.get("%-ofi", dataframe.get("%-ofi_5m", 0)) < 0)
-        if self.use_cvd_filter.value > 0.5:
+        if self.use_cvd_filter:
              enter_short_conditions.append(dataframe.get("%-cvd_zscore_1h", dataframe.get("%-cvd_zscore_1h_5m", 0)) < 0)
 
         dataframe.loc[reduce(lambda x, y: x & y, enter_short_conditions), ["enter_short", "enter_tag"]] = (1, "stat_arb_short")
@@ -210,4 +210,3 @@ class StatArbStrategy(IStrategy):
 
     def custom_fee(self, pair: str, trade_type: str, temporary_entry_fee: float, temporary_exit_fee: float, actual_fee: float, **kwargs) -> float:
         return 0.0002
-turn 0.0002
