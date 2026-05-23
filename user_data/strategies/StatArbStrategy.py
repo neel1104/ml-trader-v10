@@ -169,14 +169,18 @@ class StatArbStrategy(IStrategy):
             dataframe["expected_reversion"] > self.min_expected_profit.value
         ]
 
-        if self.use_trend_filter:
+        # Check if microstructure data actually exists in this dataset
+        has_microstructure = ("%-ofi" in dataframe.columns) and (dataframe["%-ofi"].any())
+
+        if self.use_trend_filter.value > 0.5:
              enter_long_conditions.append(dataframe["btc_above_ema_1h"] == 1)
-        if self.use_rsi_filter:
+        if self.use_rsi_filter.value > 0.5:
              enter_long_conditions.append(dataframe.get("%-rsi-14", dataframe.get("%-rsi-14_5m", 50)) < self.rsi_threshold_long.value)
-        if self.use_ofi_filter:
-             enter_long_conditions.append(dataframe.get("%-ofi", dataframe.get("%-ofi_5m", 0)) > 0)
-        if self.use_cvd_filter:
-             enter_long_conditions.append(dataframe.get("%-cvd_zscore_1h", dataframe.get("%-cvd_zscore_1h_5m", 0)) > 0)
+        if has_microstructure:
+             if self.use_ofi_filter.value > 0.5:
+                  enter_long_conditions.append(dataframe.get("%-ofi", dataframe.get("%-ofi_5m", 0)) > 0)
+             if self.use_cvd_filter.value > 0.5:
+                  enter_long_conditions.append(dataframe.get("%-cvd_zscore_1h", dataframe.get("%-cvd_zscore_1h_5m", 0)) > 0)
 
         dataframe.loc[reduce(lambda x, y: x & y, enter_long_conditions), ["enter_long", "enter_tag"]] = (1, "stat_arb_long")
 
@@ -193,12 +197,13 @@ class StatArbStrategy(IStrategy):
             dataframe["expected_reversion"] > self.min_expected_profit.value
         ]
 
-        if self.use_trend_filter:
+        if self.use_trend_filter.value > 0.5:
              enter_short_conditions.append(dataframe["btc_above_ema_1h"] == 0)
-        if self.use_ofi_filter:
-             enter_short_conditions.append(dataframe.get("%-ofi", dataframe.get("%-ofi_5m", 0)) < 0)
-        if self.use_cvd_filter:
-             enter_short_conditions.append(dataframe.get("%-cvd_zscore_1h", dataframe.get("%-cvd_zscore_1h_5m", 0)) < 0)
+        if has_microstructure:
+             if self.use_ofi_filter.value > 0.5:
+                  enter_short_conditions.append(dataframe.get("%-ofi", dataframe.get("%-ofi_5m", 0)) < 0)
+             if self.use_cvd_filter.value > 0.5:
+                  enter_short_conditions.append(dataframe.get("%-cvd_zscore_1h", dataframe.get("%-cvd_zscore_1h_5m", 0)) < 0)
 
         dataframe.loc[reduce(lambda x, y: x & y, enter_short_conditions), ["enter_short", "enter_tag"]] = (1, "stat_arb_short")
         return dataframe
