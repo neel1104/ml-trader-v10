@@ -39,18 +39,18 @@ class StatArbStrategy(IStrategy):
     min_expected_profit = DecimalParameter(0.0001, 0.01, default=0.001, space='buy')
     min_reversion_speed = DecimalParameter(0.01, 1.0, default=0.1, space='buy')
 
-    # Guardrails
-    use_cvd_filter = DecimalParameter(0, 1, default=0.5, space='buy')
-    use_ofi_filter = DecimalParameter(0, 1, default=0.5, space='buy')
-    use_rsi_filter = DecimalParameter(0, 1, default=0.5, space='buy')
-    use_mfi_filter = DecimalParameter(0, 1, default=0.5, space='buy')
-    use_trend_filter = DecimalParameter(0, 1, default=0.5, space='buy')
-    use_freqai_reversion = DecimalParameter(0, 1, default=1.0, space='buy')
+    # Guardrails (fixed to stable defaults to keep hyperopt search space small and prevent zero-trade premature convergence)
+    use_cvd_filter = DecimalParameter(0, 1, default=0.0, space='buy', optimize=False)
+    use_ofi_filter = DecimalParameter(0, 1, default=0.0, space='buy', optimize=False)
+    use_rsi_filter = DecimalParameter(0, 1, default=0.0, space='buy', optimize=False)
+    use_mfi_filter = DecimalParameter(0, 1, default=0.0, space='buy', optimize=False)
+    use_trend_filter = DecimalParameter(0, 1, default=0.0, space='buy', optimize=False)
+    use_freqai_reversion = DecimalParameter(0, 1, default=1.0, space='buy', optimize=False)
 
-    rsi_threshold_long = DecimalParameter(20, 50, default=30, space='buy')
-    rsi_threshold_short = DecimalParameter(50, 80, default=70, space='buy')
-    mfi_threshold_long = DecimalParameter(10, 40, default=20, space='buy')
-    mfi_threshold_short = DecimalParameter(60, 90, default=80, space='buy')
+    rsi_threshold_long = DecimalParameter(20, 50, default=30, space='buy', optimize=False)
+    rsi_threshold_short = DecimalParameter(50, 80, default=70, space='buy', optimize=False)
+    mfi_threshold_long = DecimalParameter(10, 40, default=20, space='buy', optimize=False)
+    mfi_threshold_short = DecimalParameter(60, 90, default=80, space='buy', optimize=False)
 
     def informative_pairs(self):
         pairs = self.dp.current_whitelist()
