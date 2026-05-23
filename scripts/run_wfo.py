@@ -10,7 +10,18 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-FREQTRADE_BIN = PROJECT_ROOT / "venv" / "bin" / "freqtrade"
+
+# Resolve Freqtrade binary path dynamically (supports local venv & global Colab setup)
+local_venv_bin = PROJECT_ROOT / "venv" / "bin" / "freqtrade"
+if local_venv_bin.exists():
+    FREQTRADE_BIN = [str(local_venv_bin)]
+else:
+    system_bin = shutil.which("freqtrade")
+    if system_bin:
+        FREQTRADE_BIN = [system_bin]
+    else:
+        FREQTRADE_BIN = [sys.executable, "-m", "freqtrade"]
+
 BASE_CONFIG_PATH = PROJECT_ROOT / "user_data" / "config.json"
 TEMP_CONFIG_PATH = PROJECT_ROOT / "user_data" / "temp_wfo_config.json"
 MODEL_DIR = PROJECT_ROOT / "user_data" / "models"
@@ -90,19 +101,19 @@ def main():
         config_path = create_temp_config(window_id)
         
         # 1. Hyperopt
-        hyperopt_cmd = [str(FREQTRADE_BIN), "hyperopt", "--config", config_path, "--strategy", "StatArbStrategy", 
+        hyperopt_cmd = FREQTRADE_BIN + ["hyperopt", "--config", config_path, "--strategy", "StatArbStrategy", 
                         "--freqaimodel", "CatboostRegressor", "--hyperopt-loss", "SortinoHyperOptLoss", 
                         "--spaces", "buy", "sell", "--timerange", f"{train_start}-{train_end}", "-e", str(args.epochs), "-j", "1"]
         run_command(hyperopt_cmd)
         
         # 2. IS Backtest
-        is_backtest_cmd = [str(FREQTRADE_BIN), "backtesting", "--config", config_path, "--strategy", "StatArbStrategy", 
+        is_backtest_cmd = FREQTRADE_BIN + ["backtesting", "--config", config_path, "--strategy", "StatArbStrategy", 
                            "--freqaimodel", "CatboostRegressor", "--timerange", f"{train_start}-{train_end}"]
         is_output = run_command(is_backtest_cmd)
         is_sortino, is_profit = extract_metrics(is_output)
         
         # 3. OOS Backtest
-        oos_backtest_cmd = [str(FREQTRADE_BIN), "backtesting", "--config", config_path, "--strategy", "StatArbStrategy", 
+        oos_backtest_cmd = FREQTRADE_BIN + ["backtesting", "--config", config_path, "--strategy", "StatArbStrategy", 
                             "--freqaimodel", "CatboostRegressor", "--timerange", f"{test_start}-{test_end}"]
         oos_output = run_command(oos_backtest_cmd)
         oos_sortino, oos_profit = extract_metrics(oos_output)

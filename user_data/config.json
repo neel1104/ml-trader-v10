@@ -16,18 +16,7 @@
         "pair_whitelist": [
             "BTC/USDT:USDT",
             "ETH/USDT:USDT",
-            "SOL/USDT:USDT",
-            "AVAX/USDT:USDT",
-            "LINK/USDT:USDT",
-            "ADA/USDT:USDT",
-            "DOT/USDT:USDT",
-            "ATOM/USDT:USDT",
-            "NEAR/USDT:USDT",
-            "LTC/USDT:USDT",
-            "BCH/USDT:USDT",
-            "XRP/USDT:USDT",
-            "TRX/USDT:USDT",
-            "UNI/USDT:USDT"
+            "SOL/USDT:USDT"
         ],
         "pair_blacklist": [],
         "base_fee": 0.0002

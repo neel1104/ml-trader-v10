@@ -73,4 +73,11 @@ _Add a brief overview of your project architecture_
 
 ## Conventions & Patterns
 
-_Add your project-specific conventions here_
+### 🌟 Google Colab & Remote Execution Synchronicity (CRITICAL)
+
+To maintain an uncompromised cloud execution pipeline for high-performance backtesting and Walk-Forward Optimizations (WFO):
+1. **Pushes Are Mandatory:** Every update to the strategy, features, configurations, or dependencies MUST be committed and pushed immediately so they are pulled inside the Colab runtime.
+2. **Notebook Compatibility Verification:** If you modify `requirements.txt`, install new packages, or change C-level dependencies (such as TA-Lib wrapper requirements):
+   - **You MUST immediately edit `colab_notebook.ipynb`** to ensure the installation cells setup the environment correctly with the new requirements.
+3. **Paths Integrity:** Ensure that all relative paths used in any script (`run_wfo.py`, config loaders, custom metrics) remain compatible with Colab's standard paths (`/content/ml-trader-v10/...`).
+

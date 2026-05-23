@@ -68,6 +68,8 @@ AI agents MUST adhere to the protocol in `AGENTS.md`:
 2. **Execute & Test:** Implement changes surgically and verify with `pytest`.
 3. **Beads Integration:** Claim, update, and close issues using `bd`.
 4. **Mandatory Push:** All work sessions MUST end with a successful `git push` including beads metadata.
+5. **Colab Synchronicity:** If code updates introduce new requirements or parameters, update the corresponding cells in `colab_notebook.ipynb` to guarantee the cloud container remains 100% compatible.
+
 
 ### Coding Style
 
