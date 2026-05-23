@@ -20,11 +20,8 @@
       "max_open_trades": 3
     },
     "buy": {
-      "lookback_period": 100,
       "mfi_threshold_long": 25.0,
       "mfi_threshold_short": 75.0,
-      "min_expected_profit": 0.001,
-      "min_reversion_speed": 0.1,
       "rsi_threshold_long": 35.0,
       "rsi_threshold_short": 65.0,
       "use_cvd_filter": 0.0,
@@ -33,14 +30,17 @@
       "use_ofi_filter": 0.0,
       "use_rsi_filter": 0.0,
       "use_trend_filter": 0.0,
-      "zscore_fav": 1.5,
-      "zscore_neu": 2.0,
-      "zscore_pen": 3.0
+      "lookback_period": 189,
+      "min_expected_profit": 0.008,
+      "min_reversion_speed": 0.022,
+      "zscore_fav": 2.239,
+      "zscore_neu": 2.836,
+      "zscore_pen": 2.179
     },
     "sell": {
-      "zscore_exit": 0.0
+      "zscore_exit": 0.246
     }
   },
   "ft_stratparam_v": 1,
-  "export_time": "2026-05-10 11:51:05.758040+00:00"
+  "export_time": "2026-05-23 06:00:42.820257+00:00"
 }
