@@ -59,9 +59,9 @@ class StatArbStrategy(IStrategy):
     # Guardrails (fixed to stable defaults to keep hyperopt search space small and prevent zero-trade premature convergence)
     use_cvd_filter = DecimalParameter(0, 1, default=0.0, space='buy', optimize=False)
     use_ofi_filter = DecimalParameter(0, 1, default=0.0, space='buy', optimize=False)
-    use_rsi_filter = DecimalParameter(0, 1, default=0.0, space='buy', optimize=False)
+    use_rsi_filter = DecimalParameter(0, 1, default=1.0, space='buy', optimize=False)
     use_mfi_filter = DecimalParameter(0, 1, default=0.0, space='buy', optimize=False)
-    use_trend_filter = DecimalParameter(0, 1, default=0.0, space='buy', optimize=False)
+    use_trend_filter = DecimalParameter(0, 1, default=1.0, space='buy', optimize=False)
     use_freqai_reversion = DecimalParameter(0, 1, default=1.0, space='buy', optimize=False)
 
     rsi_threshold_long = DecimalParameter(20, 50, default=30, space='buy', optimize=False)
