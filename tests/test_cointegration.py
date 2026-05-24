@@ -109,7 +109,11 @@ def test_cointegration_analysis():
     assert "spread" in result_df.columns
     assert "coint_active" in result_df.columns
     
-    # Under cointegration, the active flag should be 1
+    # Assert that all indices below coint_win (500) have coint_active == 0 (look-ahead bias protection)
+    coint_win_val = strategy.coint_window.value
+    assert (result_df["coint_active"].iloc[0:coint_win_val] == 0).all()
+    
+    # Under cointegration, the active flag should be 1 at the out-of-sample index
     assert result_df["coint_active"].iloc[-1] == 1
     
     # 2. Test scenario where no cointegrating relationship exists

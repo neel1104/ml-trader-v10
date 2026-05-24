@@ -52,6 +52,10 @@ class StatArbStrategy(IStrategy):
     min_stake_multiplier = DecimalParameter(0.05, 0.5, default=0.2, space='buy', optimize=False)
     max_stake_multiplier = DecimalParameter(1.0, 3.0, default=1.5, space='buy', optimize=False)
 
+    # Slippage adjustment (simulated in custom_fee)
+    # Default is 0.0005 (0.05% or 5 bps per leg, round-trip 10 bps friction)
+    backtest_slippage = DecimalParameter(0.0, 0.0020, default=0.0005, decimals=4, space='buy', optimize=False)
+
     # Guardrails (fixed to stable defaults to keep hyperopt search space small and prevent zero-trade premature convergence)
     use_cvd_filter = DecimalParameter(0, 1, default=0.0, space='buy', optimize=False)
     use_ofi_filter = DecimalParameter(0, 1, default=0.0, space='buy', optimize=False)
@@ -148,16 +152,14 @@ class StatArbStrategy(IStrategy):
         log_self = np.log(aligned_df['close_self'].to_numpy())
         log_others = {op: np.log(aligned_df[f'close_{op}'].to_numpy()) for op in other_pairs if f'close_{op}' in aligned_df.columns}
         
-        # 1. First block: [0, min(coint_win, n_candles)]
+        # 1. First block: [0, min(coint_win, n_candles)] (Warm-up block, coint_active strictly 0 to prevent look-ahead bias)
         first_block_end = min(coint_win, n_candles)
-        if first_block_end > 10:  # Need at least a few candles to regress
-            best_op, best_beta, best_alpha, best_pvalue = self._find_best_cointegration_partner(
-                log_self, log_others, other_pairs, 0, first_block_end
-            )
-            self._apply_cointegration_params(
-                spread, coint_active, log_self, log_others, 0, first_block_end,
-                best_op, best_beta, best_alpha, best_pvalue, pair
-            )
+        fallback_op = "BTC/USDT:USDT" if pair != "BTC/USDT:USDT" else "ETH/USDT:USDT"
+        if fallback_op in log_others:
+            spread[0:first_block_end] = log_self[0:first_block_end] - log_others[fallback_op][0:first_block_end]
+        else:
+            spread[0:first_block_end] = 0.0
+        coint_active[0:first_block_end] = 0
             
         # 2. Subsequent blocks: i from coint_win to n_candles by step (288)
         if n_candles > coint_win:
@@ -317,7 +319,8 @@ class StatArbStrategy(IStrategy):
         return dataframe
 
     def custom_fee(self, pair: str, trade_type: str, temporary_entry_fee: float, temporary_exit_fee: float, actual_fee: float, **kwargs) -> float:
-        return 0.0002
+        # Base exchange maker fee is 0.02% (0.0002) + backtest slippage friction
+        return 0.0002 + float(self.backtest_slippage.value)
 
     def custom_stake_amount(self, pair: str, current_time: datetime, current_rate: float,
                             proposed_stake: float, min_stake: float, max_stake: float,
