@@ -5,6 +5,9 @@ from datetime import datetime
 from freqtrade.strategy import IStrategy, DecimalParameter, IntParameter, merge_informative_pair
 import talib.abstract as ta
 import logging
+import statsmodels.api as sm
+from statsmodels.tsa.stattools import adfuller
+from scipy.stats import linregress
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +42,10 @@ class StatArbStrategy(IStrategy):
     min_expected_profit = DecimalParameter(0.0001, 0.01, default=0.001, space='buy')
     min_reversion_speed = DecimalParameter(0.01, 1.0, default=0.1, space='buy')
 
+    # Cointegration parameters (fixed to safe stable defaults)
+    coint_window = IntParameter(200, 1000, default=500, space='buy', optimize=False)
+    coint_pvalue_threshold = DecimalParameter(0.01, 0.20, default=0.10, space='buy', optimize=False)
+
     # Guardrails (fixed to stable defaults to keep hyperopt search space small and prevent zero-trade premature convergence)
     use_cvd_filter = DecimalParameter(0, 1, default=0.0, space='buy', optimize=False)
     use_ofi_filter = DecimalParameter(0, 1, default=0.0, space='buy', optimize=False)
@@ -58,6 +65,52 @@ class StatArbStrategy(IStrategy):
         informative_pairs.append(("BTC/USDT:USDT", "1h"))
         return informative_pairs
 
+    def _find_best_cointegration_partner(self, log_self, log_others, other_pairs, start_idx, end_idx):
+        best_op = None
+        best_adf = float('inf')
+        best_beta = 1.0
+        best_alpha = 0.0
+        best_pvalue = 1.0
+        
+        y_train = log_self[start_idx:end_idx]
+        
+        for op in other_pairs:
+            if op not in log_others:
+                continue
+            x_train = log_others[op][start_idx:end_idx]
+            
+            try:
+                beta, alpha, _, _, _ = linregress(x_train, y_train)
+                if np.isnan(beta) or np.isinf(beta):
+                    continue
+                residuals = y_train - (beta * x_train + alpha)
+                adf_res = adfuller(residuals)
+                adf_stat = adf_res[0]
+                pval = adf_res[1]
+                
+                if adf_stat < best_adf:
+                    best_adf = adf_stat
+                    best_pvalue = pval
+                    best_beta = beta
+                    best_alpha = alpha
+                    best_op = op
+            except Exception:
+                continue
+                
+        return best_op, best_beta, best_alpha, best_pvalue
+
+    def _apply_cointegration_params(self, spread, coint_active, log_self, log_others, start_idx, end_idx, best_op, best_beta, best_alpha, best_pvalue, pair):
+        if best_op is not None:
+            spread[start_idx:end_idx] = log_self[start_idx:end_idx] - (best_beta * log_others[best_op][start_idx:end_idx] + best_alpha)
+            coint_active[start_idx:end_idx] = 1 if best_pvalue <= self.coint_pvalue_threshold.value else 0
+        else:
+            fallback_op = "BTC/USDT:USDT" if pair != "BTC/USDT:USDT" else "ETH/USDT:USDT"
+            if fallback_op in log_others:
+                spread[start_idx:end_idx] = log_self[start_idx:end_idx] - log_others[fallback_op][start_idx:end_idx]
+            else:
+                spread[start_idx:end_idx] = 0.0
+            coint_active[start_idx:end_idx] = 0
+
     def calculate_indicators(self, dataframe: pd.DataFrame, metadata: dict) -> pd.DataFrame:
         """
         Calculates all technical indicators used by the strategy.
@@ -65,28 +118,70 @@ class StatArbStrategy(IStrategy):
         during backtesting/hyperopt even if FreqAI cleans up features.
         """
         pair = metadata.get("pair")
-        other_pair = "BTC/USDT:USDT"
-        if pair == other_pair:
-             other_pair = "ETH/USDT:USDT"
-
-        other_df = self.dp.get_pair_dataframe(other_pair, self.timeframe)
+        whitelist = self.dp.current_whitelist()
+        other_pairs = [p for p in whitelist if p != pair]
         
-        if not other_df.empty:
-            temp_df = pd.merge(dataframe[['date', 'close']], other_df[['date', 'close']], on='date', suffixes=('', '_other'), how='left')
-            temp_df['close_other'] = temp_df['close_other'].ffill().bfill()
-            spread = np.log(temp_df['close']) - np.log(temp_df['close_other'])
+        # Load and align all other pairs dataframes
+        aligned_df = dataframe[['date', 'close']].copy()
+        aligned_df = aligned_df.rename(columns={'close': 'close_self'})
+        
+        for op in other_pairs:
+            op_df = self.dp.get_pair_dataframe(op, self.timeframe)
+            if not op_df.empty:
+                op_df_subset = op_df[['date', 'close']].rename(columns={'close': f'close_{op}'})
+                aligned_df = pd.merge(aligned_df, op_df_subset, on='date', how='left')
+                aligned_df[f'close_{op}'] = aligned_df[f'close_{op}'].ffill().bfill()
+        
+        n_candles = len(dataframe)
+        spread = np.zeros(n_candles)
+        coint_active = np.zeros(n_candles, dtype=int)
+        
+        coint_win = self.coint_window.value
+        step = 288
+        
+        log_self = np.log(aligned_df['close_self'].to_numpy())
+        log_others = {op: np.log(aligned_df[f'close_{op}'].to_numpy()) for op in other_pairs if f'close_{op}' in aligned_df.columns}
+        
+        # 1. First block: [0, min(coint_win, n_candles)]
+        first_block_end = min(coint_win, n_candles)
+        if first_block_end > 10:  # Need at least a few candles to regress
+            best_op, best_beta, best_alpha, best_pvalue = self._find_best_cointegration_partner(
+                log_self, log_others, other_pairs, 0, first_block_end
+            )
+            self._apply_cointegration_params(
+                spread, coint_active, log_self, log_others, 0, first_block_end,
+                best_op, best_beta, best_alpha, best_pvalue, pair
+            )
             
-            lookback = self.lookback_period.value
-            spread_mean = spread.rolling(window=lookback).mean()
-            spread_std = spread.rolling(window=lookback).std()
-            
-            dataframe['zscore'] = ((spread - spread_mean) / (spread_std + 0.0001)).fillna(0)
-            dataframe['zscore_diff'] = dataframe['zscore'].diff().fillna(0)
-            dataframe['volatility'] = spread.rolling(window=30).std().fillna(0)
-        else:
-            dataframe['zscore'] = 0.0
-            dataframe['zscore_diff'] = 0.0
-            dataframe['volatility'] = 0.0
+        # 2. Subsequent blocks: i from coint_win to n_candles by step (288)
+        if n_candles > coint_win:
+            for i in range(coint_win, n_candles, step):
+                block_start = i
+                block_end = min(i + step, n_candles)
+                
+                # Window for regression is [i - coint_win, i]
+                win_start = i - coint_win
+                win_end = i
+                
+                best_op, best_beta, best_alpha, best_pvalue = self._find_best_cointegration_partner(
+                    log_self, log_others, other_pairs, win_start, win_end
+                )
+                self._apply_cointegration_params(
+                    spread, coint_active, log_self, log_others, block_start, block_end,
+                    best_op, best_beta, best_alpha, best_pvalue, pair
+                )
+                
+        dataframe['spread'] = spread
+        dataframe['coint_active'] = coint_active
+        
+        # Calculate rolling z-score using spread
+        lookback = self.lookback_period.value
+        spread_mean = dataframe['spread'].rolling(window=lookback).mean()
+        spread_std = dataframe['spread'].rolling(window=lookback).std()
+        
+        dataframe['zscore'] = ((dataframe['spread'] - spread_mean) / (spread_std + 0.0001)).fillna(0)
+        dataframe['zscore_diff'] = dataframe['zscore'].diff().fillna(0)
+        dataframe['volatility'] = dataframe['spread'].rolling(window=30).std().fillna(0)
 
         # Funding indicators
         if 'funding_rate' in dataframe.columns:
@@ -161,6 +256,7 @@ class StatArbStrategy(IStrategy):
         neu_long = ~(fav_long | pen_long)
 
         enter_long_conditions = [
+            dataframe["coint_active"] == 1,
             (fav_long & (dataframe["zscore"] < -self.zscore_fav.value)) |
             (neu_long & (dataframe["zscore"] < -self.zscore_neu.value)) |
             (pen_long & (dataframe["zscore"] < -self.zscore_pen.value)),
@@ -189,6 +285,7 @@ class StatArbStrategy(IStrategy):
         neu_short = ~(fav_short | pen_short)
 
         enter_short_conditions = [
+            dataframe["coint_active"] == 1,
             (fav_short & (dataframe["zscore"] > self.zscore_fav.value)) |
             (neu_short & (dataframe["zscore"] > self.zscore_neu.value)) |
             (pen_short & (dataframe["zscore"] > self.zscore_pen.value)),
