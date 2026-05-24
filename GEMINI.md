@@ -16,6 +16,9 @@ Machine learning-powered cryptocurrency trading framework built on top of [Freqt
   - `config.json`: Main project configuration (pairs, exchange, FreqAI settings).
 - `tests/`: Pytest suite for configuration and strategy validation.
 - `docs/superpowers/`: Detailed research, plans, and specifications.
+  - `plans/`: Implementation design documents.
+  - `walkthroughs/`: Chronological release notes detailing what was changed and their quantitative/performance impacts.
+  - `specs/`: Engineering specifications.
 - `research.md`: Comprehensive theoretical foundation for the quantitative framework.
 - `AGENTS.md`: Mandatory instructions and quality gates for AI agents.
 
@@ -69,6 +72,7 @@ AI agents MUST adhere to the protocol in `AGENTS.md`:
 3. **Beads Integration:** Claim, update, and close issues using `bd`.
 4. **Mandatory Push:** All work sessions MUST end with a successful `git push` including beads metadata.
 5. **Colab Synchronicity:** If code updates introduce new requirements or parameters, update the corresponding cells in `colab_notebook.ipynb` to guarantee the cloud container remains 100% compatible.
+6. **Release Notes (Walkthrough):** Document completed changes, unit testing passes, and quantitative backtest comparisons in a chronological release note saved in `docs/superpowers/walkthroughs/` (named `YYYY-MM-DD-<description>.md`) and push to remote.
 
 
 ### Coding Style
