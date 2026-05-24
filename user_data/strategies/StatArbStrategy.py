@@ -46,6 +46,12 @@ class StatArbStrategy(IStrategy):
     coint_window = IntParameter(200, 1000, default=500, space='buy', optimize=False)
     coint_pvalue_threshold = DecimalParameter(0.01, 0.20, default=0.10, space='buy', optimize=False)
 
+    # Dynamic position sizing parameters (fixed to stable defaults, hyperopt-ready)
+    use_volatility_staking = DecimalParameter(0, 1, default=1.0, space='buy', optimize=False)
+    base_volatility = DecimalParameter(0.0001, 0.01, default=0.0015, decimals=4, space='buy', optimize=False)
+    min_stake_multiplier = DecimalParameter(0.05, 0.5, default=0.2, space='buy', optimize=False)
+    max_stake_multiplier = DecimalParameter(1.0, 3.0, default=1.5, space='buy', optimize=False)
+
     # Guardrails (fixed to stable defaults to keep hyperopt search space small and prevent zero-trade premature convergence)
     use_cvd_filter = DecimalParameter(0, 1, default=0.0, space='buy', optimize=False)
     use_ofi_filter = DecimalParameter(0, 1, default=0.0, space='buy', optimize=False)
@@ -312,3 +318,44 @@ class StatArbStrategy(IStrategy):
 
     def custom_fee(self, pair: str, trade_type: str, temporary_entry_fee: float, temporary_exit_fee: float, actual_fee: float, **kwargs) -> float:
         return 0.0002
+
+    def custom_stake_amount(self, pair: str, current_time: datetime, current_rate: float,
+                            proposed_stake: float, min_stake: float, max_stake: float,
+                            leverage: float, entry_tag: str, side: str, **kwargs) -> float:
+        """
+        Dynamically adjust the stake size based on the rolling spread volatility.
+        """
+        if self.use_volatility_staking.value < 0.5:
+            return proposed_stake
+
+        try:
+            dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+            if dataframe is None or dataframe.empty:
+                return proposed_stake
+            
+            volatility = dataframe.iloc[-1].get("volatility", 0.0)
+            if pd.isna(volatility) or volatility <= 0.0:
+                return proposed_stake
+            
+            # Scale dynamically using the empirical baseline target volatility
+            multiplier = self.base_volatility.value / (volatility + 1e-8)
+            
+            # Clamp multiplier to boundaries
+            min_mult = self.min_stake_multiplier.value
+            max_mult = self.max_stake_multiplier.value
+            multiplier = max(min_mult, min(max_mult, multiplier))
+            
+            # Calculate dynamic stake size
+            dynamic_stake = proposed_stake * multiplier
+            
+            # Bounding limits
+            if min_stake is not None:
+                dynamic_stake = max(min_stake, dynamic_stake)
+            if max_stake is not None:
+                dynamic_stake = min(max_stake, dynamic_stake)
+                
+            return float(dynamic_stake)
+            
+        except Exception as e:
+            logger.error(f"Error in custom_stake_amount for {pair}: {e}")
+            return proposed_stake
